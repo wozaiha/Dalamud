@@ -77,9 +77,13 @@ namespace Dalamud.Game.Internal.Gui {
         
         protected override void Setup64Bit(SigScanner sig) {
             //PrintMessage = sig.ScanText("4055 57 41 ?? 41 ?? 488DAC24D8FEFFFF 4881EC28020000 488B05???????? 4833C4 488985F0000000 4532D2 48894C2448"); LAST PART FOR 5.1???
+            //PrintMessage =
+            //    sig.ScanText(
+            //        "4055 53 56 4154 4157 48 8d ac 24 ?? ?? ?? ?? 48 81 ec 20 02 00 00 48 8b 05"
+            //    );
             PrintMessage =
                 sig.ScanText(
-                    "4055 53 56 4154 4157 48 8d ac 24 ?? ?? ?? ?? 48 81 ec 20 02 00 00 48 8b 05"
+                      "4055 57 4155 4156 4157 48 8D ac 24 ?? ?? ?? ?? 48 81 EC 20 02 00 00 48 8b 05"
                 );
             //PrintMessage = sig.ScanText("4055 57 41 ?? 41 ?? 488DAC24E8FEFFFF 4881EC18020000 488B05???????? 4833C4 488985E0000000 4532D2 48894C2438"); old
 

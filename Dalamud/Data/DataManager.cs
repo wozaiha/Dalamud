@@ -90,6 +90,7 @@ namespace Dalamud.Data
                     ClientLanguage.English => Language.English,
                     ClientLanguage.German => Language.German,
                     ClientLanguage.French => Language.French,
+                    ClientLanguage.ChineseSimplified => Language.ChineseSimplified,
                     _ => throw new ArgumentOutOfRangeException(nameof(this.language),
                                                                "Unknown Language: " + this.language)
                 };
@@ -141,6 +142,7 @@ namespace Dalamud.Data
                 ClientLanguage.English => Language.English,
                 ClientLanguage.German => Language.German,
                 ClientLanguage.French => Language.French,
+                ClientLanguage.ChineseSimplified => Language.ChineseSimplified,
                 _ => throw new ArgumentOutOfRangeException(nameof(this.language), "Unknown Language: " + this.language)
             };
             return this.Excel.GetSheet<T>(lang);

@@ -27,7 +27,8 @@ namespace Dalamud.Game.ClientState
             LocalContentId = sig.GetStaticAddressFromSig("48 8B 05 ?? ?? ?? ?? 48 89 86 ?? ?? ?? ??");
             JobGaugeData = sig.GetStaticAddressFromSig("E8 ?? ?? ?? ?? FF C6 48 8D 5B 0C", 0xB9) + 0x10;
 
-            SetupTerritoryType = sig.ScanText("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 48 8B F9 66 89 91 ?? ?? ?? ??");
+            //SetupTerritoryType = sig.ScanText("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 48 8B F9 66 89 91 ?? ?? ?? ??"); // Intl
+            SetupTerritoryType = sig.ScanText("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 ec 20 48 8b d9 66 89 91 ?? ?? ?? ??"); // Cn
 
             // This resolves to a fixed offset only, without the base address added in, so GetStaticAddressFromSig() can't be used
             KeyboardState = sig.ScanText("48 8D 0C 85 ?? ?? ?? ?? 8B 04 31 85 C2 0F 85") + 0x4;

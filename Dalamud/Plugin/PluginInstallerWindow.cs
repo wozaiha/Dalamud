@@ -77,8 +77,8 @@ namespace Dalamud.Plugin
                     if (pluginDefinition.IsHide)
                         continue;
 
-                    if (pluginDefinition.DalamudApiLevel != PluginManager.DALAMUD_API_LEVEL)
-                        continue;
+                    //if (pluginDefinition.DalamudApiLevel != PluginManager.DALAMUD_API_LEVEL)
+                    //    continue;
 
                     didAny = true;
 

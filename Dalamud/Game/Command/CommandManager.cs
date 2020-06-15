@@ -34,6 +34,10 @@ namespace Dalamud.Game.Command {
             new Regex(@"^La commande texte “(?<command>.+)” n'existe pas\.$",
                       RegexOptions.Compiled);
 
+        private readonly Regex commandRegexCn =
+            new Regex(@"^“(?<command>.+)”出现问题：该命令不存在。$",
+                      RegexOptions.Compiled);
+
         private readonly Regex currentLangCommandRegex;
 
 
@@ -52,6 +56,9 @@ namespace Dalamud.Game.Command {
                     break;
                 case ClientLanguage.French:
                     this.currentLangCommandRegex = this.commandRegexFr;
+                    break;
+                case ClientLanguage.ChineseSimplified:
+                    this.currentLangCommandRegex = this.commandRegexCn;
                     break;
             }
 

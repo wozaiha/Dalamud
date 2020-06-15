@@ -164,11 +164,11 @@ namespace Dalamud.Plugin
                         IsHide = false,
                         DalamudApiLevel = DALAMUD_API_LEVEL
                     };
-
+                    /*
                     if (pluginDef.DalamudApiLevel != DALAMUD_API_LEVEL) {
                         Log.Error("Incompatible API level: {0}", dllFile.FullName);
                         return false;
-                    }
+                    }*/
 
                     var dalamudInterface = new DalamudPluginInterface(this.dalamud, type.Assembly.GetName().Name, this.pluginConfigs);
                     plugin.Initialize(dalamudInterface);

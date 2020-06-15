@@ -20,6 +20,7 @@ namespace Dalamud {
         Japanese,
         English,
         German,
-        French
+        French,
+        ChineseSimplified
     }
 }
