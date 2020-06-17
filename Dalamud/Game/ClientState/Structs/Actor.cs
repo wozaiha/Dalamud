@@ -34,7 +34,7 @@ namespace Dalamud.Game.ClientState.Structs
         [FieldOffset(0x1818)] public int BattleNpcTargetActorId;
 
         // This field can't be correctly aligned, so we have to cut it manually.
-        [FieldOffset(0x17F8)] [MarshalAs(UnmanagedType.ByValArray, SizeConst = 7)]
+        [FieldOffset(0x17F8)] [MarshalAs(UnmanagedType.ByValArray, SizeConst = 15)]
         public byte[] CompanyTag;
 
         [FieldOffset(0x1888)] public int NameId;

@@ -82,7 +82,8 @@ namespace Dalamud.Data
 
                 var luminaOptions = new LuminaOptions
                 {
-                    CacheFileResources = true
+                    CacheFileResources = true,
+                    PanicOnSheetChecksumMismatch = false,
                 };
 
                 luminaOptions.DefaultExcelLanguage = this.language switch {
@@ -196,6 +197,7 @@ namespace Dalamud.Data
                 ClientLanguage.English => "en/",
                 ClientLanguage.German => "de/",
                 ClientLanguage.French => "fr/",
+                ClientLanguage.ChineseSimplified => "chs/",
                 _ => throw new ArgumentOutOfRangeException(nameof(this.language),
                                                            "Unknown Language: " + this.language)
             };
