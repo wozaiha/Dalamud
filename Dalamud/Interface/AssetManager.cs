@@ -10,7 +10,7 @@ using Serilog;
 namespace Dalamud.Interface
 {
     class AssetManager {
-        private const string AssetStoreUrl = "https://goatcorp.github.io/DalamudAssets/";
+        private const string AssetStoreUrl = "https://bluefissure.gitee.io/dalamudassets/";
 
         private static readonly Dictionary<string, string> AssetDictionary = new Dictionary<string, string> {
             {AssetStoreUrl + "UIRes/serveropcode.json", "UIRes/serveropcode.json" },
@@ -23,6 +23,7 @@ namespace Dalamud.Interface
             {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_fr.json", "UIRes/loc/dalamud/dalamud_fr.json" },
             {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_it.json", "UIRes/loc/dalamud/dalamud_it.json" },
             {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_ja.json", "UIRes/loc/dalamud/dalamud_ja.json" },
+            {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_zh.json", "UIRes/loc/dalamud/dalamud_zh.json" },
             {"https://img.finalfantasyxiv.com/lds/pc/global/fonts/FFXIV_Lodestone_SSF.ttf", "UIRes/gamesym.ttf" }
         };
 

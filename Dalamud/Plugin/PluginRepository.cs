@@ -14,7 +14,8 @@ namespace Dalamud.Plugin
 {
     internal class PluginRepository
     {
-        private string PluginRepoBaseUrl => "https://raw.githubusercontent.com/goatcorp/DalamudPlugins/" + (this.dalamud.Configuration.DoPluginTest ? "testing/" : "master/");
+        // private string PluginRepoBaseUrl => "https://raw.githubusercontent.com/goatcorp/DalamudPlugins/" + (this.dalamud.Configuration.DoPluginTest ? "testing/" : "master/");
+        private string PluginRepoBaseUrl => "https://gitee.com/bluefissure/DalamudPlugins/raw/cn/";
 
         private readonly Dalamud dalamud;
         private string pluginDirectory;
