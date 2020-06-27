@@ -146,7 +146,7 @@ namespace Dalamud.Game.Network {
             if (!this.optOutMbUploads) {
                 if (opCode == this.dalamud.Data.ServerOpCodes["MarketBoardItemRequestStart"]) {
                     var catalogId = (uint) Marshal.ReadInt32(dataPtr);
-                    var amount = Marshal.ReadByte(dataPtr + 0xB);
+                    var amount = Marshal.ReadByte(dataPtr + 0x4);
 
                     this.marketBoardRequests.Add(new MarketBoardItemRequest {
                         CatalogId = catalogId,
