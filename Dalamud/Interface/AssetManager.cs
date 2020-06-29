@@ -15,7 +15,7 @@ namespace Dalamud.Interface
         private static readonly Dictionary<string, string> AssetDictionary = new Dictionary<string, string> {
             {AssetStoreUrl + "UIRes/serveropcode.json", "UIRes/serveropcode.json" },
             {AssetStoreUrl + "UIRes/clientopcode.json", "UIRes/clientopcode.json" },
-            {AssetStoreUrl + "UIRes/NotoSansCJKjp-Medium.otf", "UIRes/NotoSansCJKjp-Medium.otf" },
+            {AssetStoreUrl + "UIRes/NotoSansCJKsc-Medium.otf", "UIRes/NotoSansCJKsc-Medium.otf" },
             {AssetStoreUrl + "UIRes/FontAwesome5FreeSolid.otf", "UIRes/FontAwesome5FreeSolid.otf" },
             {AssetStoreUrl + "UIRes/logo.png", "UIRes/logo.png" },
             {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_de.json", "UIRes/loc/dalamud/dalamud_de.json" },
