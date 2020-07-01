@@ -6,6 +6,7 @@ using Dalamud.Game.Network.MarketBoardUploaders.Universalis;
 using Dalamud.Game.Network.Structures;
 using Newtonsoft.Json;
 using Serilog;
+using SharpDX.Text;
 
 namespace Dalamud.Game.Network.Universalis.MarketBoardUploaders {
     internal class UniversalisMarketBoardUploader : IMarketBoardUploader {
@@ -23,6 +24,7 @@ namespace Dalamud.Game.Network.Universalis.MarketBoardUploaders {
         public void Upload(MarketBoardItemRequest request) {
             using (var client = new WebClient()) {
                 client.Headers.Add(HttpRequestHeader.ContentType, "application/json");
+                client.Encoding = System.Text.Encoding.UTF8;
 
                 Log.Verbose("Starting Universalis upload.");
                 var uploader = this.dalamud.ClientState.LocalContentId;
