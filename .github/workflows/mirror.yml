@@ -14,4 +14,4 @@ jobs:
         dst: gitee/Bluefissure
         dst_key: ${{ secrets.GITEE_PRIVATE_KEY }}
         dst_token: ${{ secrets.GITEE_TOKEN }}
-        white_list: "Dalamud,DalamudAssets,DalamudPlugins"
+        white_list: "Dalamud,DalamudAssets,DalamudPlugins,universalis_act_plugin"
