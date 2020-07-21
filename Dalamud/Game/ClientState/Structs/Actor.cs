@@ -28,28 +28,28 @@ namespace Dalamud.Game.ClientState.Structs
         [FieldOffset(160)] public Position3 Position;
         [FieldOffset(176)] public float Rotation; // Rotation around the vertical axis (yaw), from -pi to pi radians     
 
-        [FieldOffset(0x17E8)] [MarshalAs(UnmanagedType.ByValArray, SizeConst = 28)] public byte[] Customize;
+        [FieldOffset(0x17B8)] [MarshalAs(UnmanagedType.ByValArray, SizeConst = 28)] public byte[] Customize;
 
         [FieldOffset(0x1F0)] public int PlayerCharacterTargetActorId;
-        [FieldOffset(0x1818)] public int BattleNpcTargetActorId;
+        [FieldOffset(0x17F8)] public int BattleNpcTargetActorId;
 
         // This field can't be correctly aligned, so we have to cut it manually.
-        [FieldOffset(0x17F8)] [MarshalAs(UnmanagedType.ByValArray, SizeConst = 15)]
+        [FieldOffset(0x17D0)] [MarshalAs(UnmanagedType.ByValArray, SizeConst = 15)]
         public byte[] CompanyTag;
 
-        [FieldOffset(0x1888)] public int NameId;
-        [FieldOffset(0x18A4)] public ushort CurrentWorld;
-        [FieldOffset(0x18A6)] public ushort HomeWorld;
-        [FieldOffset(0x18B8)] public int CurrentHp;
-        [FieldOffset(0x18BC)] public int MaxHp;
-        [FieldOffset(0x18C0)] public int CurrentMp;
+        [FieldOffset(0x1868)] public int NameId;
+        [FieldOffset(0x1884)] public ushort CurrentWorld;
+        [FieldOffset(0x1886)] public ushort HomeWorld;
+        [FieldOffset(0x1898)] public int CurrentHp;
+        [FieldOffset(0x189C)] public int MaxHp;
+        [FieldOffset(0x18A0)] public int CurrentMp;
         // This value is weird.  It seems to change semi-randomly between 0 and 10k, definitely
         // in response to mp-using events, but it doesn't often have a value and the changing seems
         // somewhat arbitrary.
-        [FieldOffset(0x18CA)] public int MaxMp;
-        [FieldOffset(0x18F4)] public byte ClassJob;
-        [FieldOffset(0x18F6)] public byte Level;
-        [FieldOffset(0x1978)][MarshalAs(UnmanagedType.ByValArray, SizeConst = 20)] public StatusEffect[] UIStatusEffects; 
+        [FieldOffset(0x18AA)] public int MaxMp;
+        [FieldOffset(0x18D6)] public byte ClassJob;
+        [FieldOffset(0x18D8)] public byte Level;
+        [FieldOffset(0x1958)][MarshalAs(UnmanagedType.ByValArray, SizeConst = 20)] public StatusEffect[] UIStatusEffects; 
         
     }
 }
