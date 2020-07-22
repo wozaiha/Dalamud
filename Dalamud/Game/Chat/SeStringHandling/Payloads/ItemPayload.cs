@@ -1,9 +1,9 @@
-using Dalamud.Data.TransientSheet;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Lumina.Excel.GeneratedSheets;
 
 namespace Dalamud.Game.Chat.SeStringHandling.Payloads
 {
@@ -25,7 +25,7 @@ namespace Dalamud.Game.Chat.SeStringHandling.Payloads
         {
             get
             {
-                this.item ??= this.dataResolver.GetExcelSheet<Item>().GetRow(this.itemId);
+                this.item ??= this.DataResolver.GetExcelSheet<Item>().GetRow(this.itemId);
                 return this.item;
             }
         }

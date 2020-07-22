@@ -126,7 +126,7 @@ namespace Dalamud.Data
         /// </summary>
         /// <typeparam name="T">The excel sheet type to get.</typeparam>
         /// <returns>The <see cref="ExcelSheet{T}"/>, giving access to game rows.</returns>
-        public ExcelSheet<T> GetExcelSheet<T>() where T : IExcelRow
+        public ExcelSheet<T> GetExcelSheet<T>() where T : class, IExcelRow
         {
             return this.Excel.GetSheet<T>();
         }
@@ -137,7 +137,7 @@ namespace Dalamud.Data
         /// <param name="language">Language of the sheet to get.</param>
         /// <typeparam name="T">The excel sheet type to get.</typeparam>
         /// <returns>The <see cref="ExcelSheet{T}"/>, giving access to game rows.</returns>
-        public ExcelSheet<T> GetExcelSheet<T>(ClientLanguage language) where T : IExcelRow {
+        public ExcelSheet<T> GetExcelSheet<T>(ClientLanguage language) where T : class, IExcelRow {
             var lang = language switch {
                 ClientLanguage.Japanese => Language.Japanese,
                 ClientLanguage.English => Language.English,

@@ -33,7 +33,7 @@ namespace Dalamud.Injector {
 
 
             var pid = -1;
-            if (args.Length == 1) {
+            if (args.Length >= 1) {
                 pid = int.Parse(args[0]);
             }
 
@@ -75,7 +75,7 @@ namespace Dalamud.Injector {
 
             Thread.Sleep(1000);
 
-#if DEBUG
+#if NO
             // Inject exception handler
             NativeInject(process);
 #endif

@@ -77,7 +77,7 @@ namespace Dalamud.Plugin
                     if (disabledFile.Exists)
                         disabledFile.Delete();
 
-                    return this.dalamud.PluginManager.LoadPluginFromAssembly(dllFile, false);
+                    return this.dalamud.PluginManager.LoadPluginFromAssembly(dllFile, false, PluginLoadReason.Installer);
                 }
 
                 if (dllFile.Exists && !enableAfterInstall) {
@@ -106,7 +106,7 @@ namespace Dalamud.Plugin
                     return true;
                 }
 
-                return this.dalamud.PluginManager.LoadPluginFromAssembly(dllFile, false);
+                return this.dalamud.PluginManager.LoadPluginFromAssembly(dllFile, false, PluginLoadReason.Installer);
             }
             catch (Exception e)
             {
@@ -241,6 +241,37 @@ namespace Dalamud.Plugin
             Log.Information("Plugin update OK.");
 
             return (!hasError, updatedList);
+        }
+
+        public void CleanupPlugins() {
+            try
+            {
+                var pluginsDirectory = new DirectoryInfo(this.pluginDirectory);
+                foreach (var installed in pluginsDirectory.GetDirectories())
+                {
+                    var versions = installed.GetDirectories();
+
+                    if (versions.Length == 0)
+                    {
+                        Log.Information("[PLUGINR] Has no versions: {0}", installed.FullName);
+                        continue;
+                    }
+
+                    var sortedVersions = versions.OrderBy(x => int.Parse(x.Name.Replace(".", ""))).ToArray();
+                    for (var i = 0; i < sortedVersions.Length - 1; i++) {
+                        Log.Information("[PLUGINR] Trying to delete old {0} at ", installed.Name, sortedVersions[i].FullName);
+                        try {
+                            sortedVersions[i].Delete(true);
+                        } catch (Exception ex) {
+                            Log.Error(ex, "[PLUGINR] Could not delete old version");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[PLUGINR] Plugin cleanup failed.");
+            }
         }
     }
 }
