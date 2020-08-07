@@ -68,7 +68,7 @@ namespace Dalamud.Interface
             this.dalamud = dalamud;
 
             try {
-                //throw new Exception("Skip swapchain sig search");
+                throw new Exception("Skip SwapChain sig search.");
                 var sigResolver = new SwapChainSigResolver();
                 sigResolver.Setup(scanner);
 
