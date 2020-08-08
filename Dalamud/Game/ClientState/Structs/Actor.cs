@@ -45,7 +45,7 @@ namespace Dalamud.Game.ClientState.Structs
     public struct Actor
     {
         [FieldOffset(ActorOffsets.Name)]
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 30)]
+        [MarshalAs(UnmanagedType.LPUTF8Str, SizeConst = 30)]
         public string Name;
 
         [FieldOffset(ActorOffsets.ActorId)] public int ActorId;
@@ -67,12 +67,12 @@ namespace Dalamud.Game.ClientState.Structs
 
         // This field can't be correctly aligned, so we have to cut it manually.
         [FieldOffset(ActorOffsets.CompanyTag)]
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 7)]
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 15)]
         public byte[] CompanyTag;
 
         [FieldOffset(ActorOffsets.NameId)] public int NameId;
-        [FieldOffset(ActorOffsets.CurrentWorld)] public byte CurrentWorld;
-        [FieldOffset(ActorOffsets.HomeWorld)] public byte HomeWorld;
+        [FieldOffset(ActorOffsets.CurrentWorld)] public ushort CurrentWorld;
+        [FieldOffset(ActorOffsets.HomeWorld)] public ushort HomeWorld;
         [FieldOffset(ActorOffsets.CurrentHp)] public int CurrentHp;
         [FieldOffset(ActorOffsets.MaxHp)] public int MaxHp;
         [FieldOffset(ActorOffsets.CurrentMp)] public int CurrentMp;
