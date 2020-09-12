@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -23,12 +24,18 @@ namespace Dalamud.Interface
             {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_fr.json", "UIRes/loc/dalamud/dalamud_fr.json" },
             {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_it.json", "UIRes/loc/dalamud/dalamud_it.json" },
             {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_ja.json", "UIRes/loc/dalamud/dalamud_ja.json" },
+<<<<<<< HEAD
             {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_zh.json", "UIRes/loc/dalamud/dalamud_zh.json" },
+=======
+            {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_ko.json", "UIRes/loc/dalamud/dalamud_ko.json" },
+            {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_no.json", "UIRes/loc/dalamud/dalamud_no.json" },
+            {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_ru.json", "UIRes/loc/dalamud/dalamud_ru.json" },
+>>>>>>> master
             {"https://img.finalfantasyxiv.com/lds/pc/global/fonts/FFXIV_Lodestone_SSF.ttf", "UIRes/gamesym.ttf" }
         };
 
-        public static async Task EnsureAssets(string baseDir) {
-            using var client = new HttpClient();
+        public static async Task<bool> EnsureAssets(string baseDir) {
+            using var client = new WebClient();
 
             Log.Verbose("Starting asset download");
 
@@ -40,13 +47,15 @@ namespace Dalamud.Interface
                 if (!File.Exists(filePath)) {
                     Log.Verbose("Downloading {0} to {1}...", entry.Key, entry.Value);
                     try {
-                        File.WriteAllBytes(filePath, await client.GetByteArrayAsync(entry.Key));
+                        File.WriteAllBytes(filePath, client.DownloadData(entry.Key));
                     } catch (Exception ex) {
-                        // If another game is running, we don't want to just fail in here
                         Log.Error(ex, "Could not download asset.");
+                        return false;
                     }
                 }
             }
+
+            return true;
         }
     }
 }
