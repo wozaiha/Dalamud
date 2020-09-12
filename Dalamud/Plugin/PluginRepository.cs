@@ -14,15 +14,10 @@ namespace Dalamud.Plugin
 {
     internal class PluginRepository
     {
-<<<<<<< HEAD
-        // private string PluginRepoBaseUrl => "https://raw.githubusercontent.com/goatcorp/DalamudPlugins/" + (this.dalamud.Configuration.DoPluginTest ? "testing/" : "master/");
-        private string PluginRepoBaseUrl => "https://gitee.com/bluefissure/DalamudPlugins/raw/cn/";
-=======
-        private string PluginRepoBaseUrl => "https://raw.githubusercontent.com/goatcorp/DalamudPlugins/testing/plugins/{0}/latest.zip";
-        private string PluginFunctionBaseUrl => "https://us-central1-xl-functions.cloudfunctions.net/download-plugin/?plugin={0}&isUpdate={1}";
-        private string PluginMasterUrl => "https://raw.githubusercontent.com/goatcorp/DalamudPlugins/" + (this.dalamud.Configuration.DoPluginTest ? "testing/" : "master/") + "pluginmaster.json";
+        private string PluginRepoBaseUrl => "https://gitee.com/bluefissure/DalamudPlugins/raw/cn/plugins/{0}/latest.zip";
+        // private string PluginFunctionBaseUrl => "https://us-central1-xl-functions.cloudfunctions.net/download-plugin/?plugin={0}&isUpdate={1}";
+        private string PluginMasterUrl => "https://gitee.com/bluefissure/DalamudPlugins/raw/cn/pluginmaster.json";
 
->>>>>>> master
 
         private readonly Dalamud dalamud;
         private string pluginDirectory;
@@ -103,7 +98,7 @@ namespace Dalamud.Plugin
                 
                 using var client = new WebClient();
 
-                var url = this.dalamud.Configuration.DoPluginTest ? PluginRepoBaseUrl : PluginFunctionBaseUrl;
+                var url = PluginRepoBaseUrl;
                 url = string.Format(url, definition.InternalName, isUpdate);
                 Log.Information("Downloading plugin to {0} from {1}", path, url);
 

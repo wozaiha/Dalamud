@@ -24,13 +24,7 @@ namespace Dalamud.Interface
             {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_fr.json", "UIRes/loc/dalamud/dalamud_fr.json" },
             {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_it.json", "UIRes/loc/dalamud/dalamud_it.json" },
             {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_ja.json", "UIRes/loc/dalamud/dalamud_ja.json" },
-<<<<<<< HEAD
             {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_zh.json", "UIRes/loc/dalamud/dalamud_zh.json" },
-=======
-            {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_ko.json", "UIRes/loc/dalamud/dalamud_ko.json" },
-            {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_no.json", "UIRes/loc/dalamud/dalamud_no.json" },
-            {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_ru.json", "UIRes/loc/dalamud/dalamud_ru.json" },
->>>>>>> master
             {"https://img.finalfantasyxiv.com/lds/pc/global/fonts/FFXIV_Lodestone_SSF.ttf", "UIRes/gamesym.ttf" }
         };
 
