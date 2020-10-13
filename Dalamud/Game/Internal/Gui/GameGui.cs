@@ -117,7 +117,7 @@ namespace Dalamud.Game.Internal.Gui {
             var retVal = this.handleItemHoverHook.Original(hoverState, a2, a3, a4);
 
             if (retVal.ToInt64() == 22) {
-                var itemId = (ulong)Marshal.ReadInt32(hoverState, 0x138);
+                var itemId = (ulong)Marshal.ReadInt32(hoverState, 0x130);
                 this.HoveredItem = itemId;
 
                 try {
