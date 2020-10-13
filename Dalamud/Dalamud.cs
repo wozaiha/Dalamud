@@ -111,11 +111,7 @@ namespace Dalamud {
                 else
                     this.LocalizationManager.SetupWithUiCulture();
 
-                var pluginDir = this.StartInfo.PluginDirectory;
-                if (this.Configuration.DoPluginTest)
-                    pluginDir = Path.Combine(pluginDir, "..", "testPlugins");
-
-                PluginRepository = new PluginRepository(this, pluginDir, this.StartInfo.GameVersion);
+                PluginRepository = new PluginRepository(this, this.StartInfo.PluginDirectory, this.StartInfo.GameVersion);
 
                 var isInterfaceLoaded = false;
                 if (!bool.Parse(Environment.GetEnvironmentVariable("DALAMUD_NOT_HAVE_INTERFACE") ?? "false")) {
@@ -160,7 +156,7 @@ namespace Dalamud {
                     {
                         PluginRepository.CleanupPlugins();
 
-                        PluginManager = new PluginManager(this, pluginDir, this.StartInfo.DefaultPluginDirectory);
+                        PluginManager = new PluginManager(this, this.StartInfo.PluginDirectory, this.StartInfo.DefaultPluginDirectory);
                         PluginManager.LoadPlugins();
                     }
                     catch (Exception ex)
@@ -469,9 +465,13 @@ namespace Dalamud {
                 this.isImguiDrawChangelogWindow = this.changelogWindow != null && this.changelogWindow.Draw();
             }
         }
-        internal void OpenPluginInstaller() {
-            this.pluginWindow = new PluginInstallerWindow(this, this.StartInfo.GameVersion);
-            this.isImguiDrawPluginWindow = true;
+        internal void OpenPluginInstaller()
+        {
+            if (this.pluginWindow == null)
+            {
+                this.pluginWindow = new PluginInstallerWindow(this, this.StartInfo.GameVersion);
+            }
+            this.isImguiDrawPluginWindow ^= true;
         }
 
         internal void OpenChangelog() {
@@ -543,6 +543,11 @@ namespace Dalamud {
 
             CommandManager.AddHandler("/xldev", new CommandInfo(OnDebugDrawDevMenu) {
                 HelpMessage = Loc.Localize("DalamudDevMenuHelp", "Draw dev menu DEBUG"),
+                ShowInHelp = false
+            });
+
+            CommandManager.AddHandler("/xllog", new CommandInfo(OnOpenLog) {
+                HelpMessage = Loc.Localize("DalamudDevLogHelp", "Open dev log DEBUG"),
                 ShowInHelp = false
             });
 
@@ -695,6 +700,11 @@ namespace Dalamud {
             this.isImguiDrawDevMenu = !this.isImguiDrawDevMenu;
         }
 
+        private void OnOpenLog(string command, string arguments) {
+            this.logWindow = new DalamudLogWindow(CommandManager);
+            this.isImguiDrawLogWindow = true;
+        }
+
         private void OnDebugImInfoCommand(string command, string arguments) {
             var io = this.InterfaceManager.LastImGuiIoPtr;
             var info = $"WantCaptureKeyboard: {io.WantCaptureKeyboard}\n";
@@ -717,7 +727,8 @@ namespace Dalamud {
             Log.Information(info);
         }
 
-        private void OnOpenInstallerCommand(string command, string arguments) {
+        private void OnOpenInstallerCommand(string command, string arguments)
+        {
             OpenPluginInstaller();
         }
 

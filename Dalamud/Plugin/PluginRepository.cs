@@ -66,12 +66,13 @@ namespace Dalamud.Plugin
             });
         }
 
-        public bool InstallPlugin(PluginDefinition definition, bool enableAfterInstall = true, bool isUpdate = false) {
+        public bool InstallPlugin(PluginDefinition definition, bool enableAfterInstall = true, bool isUpdate = false, bool fromTesting = false) {
             try
             {
                 var outputDir = new DirectoryInfo(Path.Combine(this.pluginDirectory, definition.InternalName, definition.AssemblyVersion));
                 var dllFile = new FileInfo(Path.Combine(outputDir.FullName, $"{definition.InternalName}.dll"));
                 var disabledFile = new FileInfo(Path.Combine(outputDir.FullName, ".disabled"));
+                var testingFile = new FileInfo(Path.Combine(outputDir.FullName, ".testing"));
                 var wasDisabled = disabledFile.Exists;
 
                 if (dllFile.Exists && enableAfterInstall)
@@ -101,6 +102,7 @@ namespace Dalamud.Plugin
                 var url = PluginRepoBaseUrl;
                 url = string.Format(url, definition.InternalName, isUpdate);
                 Log.Information("Downloading plugin to {0} from {1}", path, url);
+                var doTestingDownload = false;
 
                 client.DownloadFile(url, path);
 
@@ -111,6 +113,13 @@ namespace Dalamud.Plugin
                 if (wasDisabled || !enableAfterInstall) {
                     disabledFile.Create();
                     return true;
+                }
+
+                if (doTestingDownload) {
+                    testingFile.Create();
+                } else {
+                    if (testingFile.Exists)
+                        testingFile.Delete();
                 }
 
                 return this.dalamud.PluginManager.LoadPluginFromAssembly(dllFile, false, PluginLoadReason.Installer);
@@ -177,7 +186,16 @@ namespace Dalamud.Plugin
                             continue;
                         }
 
-                        if (remoteInfo.AssemblyVersion != info.AssemblyVersion) {
+                        Version.TryParse(remoteInfo.AssemblyVersion, out Version remoteAssemblyVer);
+                        Version.TryParse(info.AssemblyVersion, out Version localAssemblyVer);
+
+                        var testingAvailable = false;
+                        if (!string.IsNullOrEmpty(remoteInfo.TestingAssemblyVersion)) {
+                            Version.TryParse(remoteInfo.TestingAssemblyVersion, out var testingAssemblyVer);
+                            testingAvailable = testingAssemblyVer > localAssemblyVer && this.dalamud.Configuration.DoPluginTest;
+                        }
+                        
+                        if (remoteAssemblyVer > localAssemblyVer || testingAvailable) {
                             Log.Information("Eligible for update: {0}", remoteInfo.InternalName);
 
                             // DisablePlugin() below immediately creates a .disabled file anyway, but will fail
@@ -211,7 +229,7 @@ namespace Dalamud.Plugin
                                     Log.Error(ex, "Plugin disable old versions failed");
                                 }
 
-                                var installSuccess = InstallPlugin(remoteInfo, wasEnabled, true);
+                                var installSuccess = InstallPlugin(remoteInfo, wasEnabled, true, testingAvailable);
 
                                 if (!installSuccess) {
                                     Log.Error("InstallPlugin failed.");
