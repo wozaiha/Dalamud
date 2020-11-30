@@ -25,7 +25,7 @@ namespace Dalamud.Game.Internal.DXGI
             Present = scanner.ScanModule("41 8B F0 8B FA 89 54 24 ?? 48 8B D9 48 89 4D ?? C6 44 24 ?? 00") - 0x37;
 
             ResizeBuffers = scanner.ScanModule("45 8B CC 45 8B C5 33 D2 48 8B CF E8 ?? ?? ?? ?? 44 8B C0 48 8D 55 ?? 48 8D 4D ?? E8 ?? ?? ?? ??") - 0xAB;
-            // ResizeBuffers = scanner.ScanModule("E9 ?? ?? ?? ?? 54 41 55 41 56 41 57 48 8D 68 B1 48 81 EC ?? ?? 00 00"); // Starting sig
+            // ResizeBuffers = scanner.ScanModule("45 8B CC 45 8B C5 33 D2 48 8B CF E8 ?? ?? ?? ?? 44 8B C0 48 8D 55 ?? 48 8D 4D ?? E8 ?? ?? ?? ??") - 0x8E; // dxgi.dll 10.0.17763.1075
         }
     }
 }
