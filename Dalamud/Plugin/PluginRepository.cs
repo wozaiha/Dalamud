@@ -51,7 +51,9 @@ namespace Dalamud.Plugin
 
                     var data = client.DownloadString(PluginMasterUrl);
 
-                    this.PluginMaster = JsonConvert.DeserializeObject<ReadOnlyCollection<PluginDefinition>>(data);
+                    var unsortedPluginMaster = JsonConvert.DeserializeObject<List<PluginDefinition>>(data);
+                    unsortedPluginMaster.Sort((a, b) => a.Name.CompareTo(b.Name));
+                    this.PluginMaster = unsortedPluginMaster.AsReadOnly();
 
                     State = InitializationState.Success;
                 }
@@ -69,7 +71,7 @@ namespace Dalamud.Plugin
         public bool InstallPlugin(PluginDefinition definition, bool enableAfterInstall = true, bool isUpdate = false, bool fromTesting = false) {
             try
             {
-                var outputDir = new DirectoryInfo(Path.Combine(this.pluginDirectory, definition.InternalName, definition.AssemblyVersion));
+                var outputDir = new DirectoryInfo(Path.Combine(this.pluginDirectory, definition.InternalName, fromTesting ? definition.TestingAssemblyVersion : definition.AssemblyVersion));
                 var dllFile = new FileInfo(Path.Combine(outputDir.FullName, $"{definition.InternalName}.dll"));
                 var disabledFile = new FileInfo(Path.Combine(outputDir.FullName, ".disabled"));
                 var testingFile = new FileInfo(Path.Combine(outputDir.FullName, ".testing"));
@@ -281,7 +283,7 @@ namespace Dalamud.Plugin
 
                     var sortedVersions = versions.OrderBy(x => int.Parse(x.Name.Replace(".", ""))).ToArray();
                     for (var i = 0; i < sortedVersions.Length - 1; i++) {
-                        Log.Information("[PLUGINR] Trying to delete old {0} at ", installed.Name, sortedVersions[i].FullName);
+                        Log.Information("[PLUGINR] Trying to delete old {0} at {1}", installed.Name, sortedVersions[i].FullName);
                         try {
                             sortedVersions[i].Delete(true);
                         } catch (Exception ex) {

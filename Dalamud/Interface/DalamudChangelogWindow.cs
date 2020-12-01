@@ -11,7 +11,7 @@ namespace Dalamud.Interface {
         private readonly Dalamud dalamud;
         private string assemblyVersion = Util.AssemblyVersion;
 
-        private const bool WarrantsChangelog = true;
+        private const bool WarrantsChangelog = false;
         private const string ChangeLog =
             @"* Various backend changes that will allow for more involved plugins
 * Fixed an issue wherein, in particular cases, chat messages from plugins would be incorrectly allocated
@@ -32,16 +32,16 @@ namespace Dalamud.Interface {
             
             ImGui.Text($"The in-game addon has been updated to version D{this.assemblyVersion}.");
 
-            ImGui.Dummy(new Vector2(10, 10));
+            ImGui.Dummy(new Vector2(10, 10) * ImGui.GetIO().FontGlobalScale);
 
             ImGui.Text("The following changes were introduced:");
             ImGui.Text(ChangeLog);
 
-            ImGui.Dummy(new Vector2(10, 10));
+            ImGui.Dummy(new Vector2(10, 10) * ImGui.GetIO().FontGlobalScale);
 
             ImGui.Text("Thank you for using our tools!");
 
-            ImGui.Dummy(new Vector2(10, 10));
+            ImGui.Dummy(new Vector2(10, 10) * ImGui.GetIO().FontGlobalScale);
 
             ImGui.PushFont(InterfaceManager.IconFont);
 
@@ -80,7 +80,7 @@ namespace Dalamud.Interface {
             ImGui.PopFont();
 
             ImGui.SameLine();
-            ImGui.Dummy(new Vector2(20, 0));
+            ImGui.Dummy(new Vector2(20, 0) * ImGui.GetIO().FontGlobalScale);
             ImGui.SameLine();
 
             if (ImGui.Button("Close")) {
