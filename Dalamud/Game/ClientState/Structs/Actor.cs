@@ -6,7 +6,7 @@ namespace Dalamud.Game.ClientState.Structs
 {
     public class ActorOffsets
     {
-        // ??? Offsets based on https://github.com/FFXIVAPP/sharlayan-resources/blob/master/structures/5.2/x64.json
+        // ??? Offsets based on https://github.com/FFXIVAPP/sharlayan-resources/blob/master/structures/5.3/x64.json
 
         public const int Name = 48;                          // 0x0030
         public const int ActorId = 116;                      // 0x0074
@@ -49,8 +49,8 @@ namespace Dalamud.Game.ClientState.Structs
         // public const int ??? = 6326;                      // 0x18B6 Title
         // public const int ??? = 6354;                      // 0x18D2 Icon
         // public const int ??? = 6356;                      // 0x18D4 ActionStatus
-        public const int ClassJob = 6358;                    // 0x18D6 Job
-        public const int Level = 6360;                       // 0x18D8 Level
+        public const int ClassJob = 6362;                    // 0x18DA Job
+        public const int Level = 6364;                       // 0x18DC Level
         // public const int ??? = 6367;                      // 0x18DF GrandCompany
         // public const int ??? = 6367;                      // 0x18DF GrandCompanyRank
         // public const int ??? = 6371;                      // 0x18E3 DifficultyRank
