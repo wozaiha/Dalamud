@@ -162,7 +162,7 @@ namespace Dalamud {
         /// <summary>
         /// Location of stored assets
         /// </summary>
-        internal DirectoryInfo AssetDirectory => new DirectoryInfo(this.StartInfo.AssetDirectory);
+        internal DirectoryInfo AssetDirectory => new DirectoryInfo(this.StartInfo.WorkingDirectory);
 
         public Dalamud(DalamudStartInfo info, LoggingLevelSwitch loggingLevelSwitch, ManualResetEvent finishSignal) {
             StartInfo = info;
@@ -179,6 +179,19 @@ namespace Dalamud {
 
         public void Start() {
             try {
+                try {
+                    var res = AssetManager.EnsureAssets(this.baseDirectory);
+
+                    if (!res) {
+                        Log.Error("One or more assets failed to download.");
+                        Unload();
+                        return;
+                    }
+                } catch (Exception e) {
+                    Log.Error(e, "Error in asset task.");
+                    Unload();
+                    return;
+                }
                 Configuration = DalamudConfiguration.Load(StartInfo.ConfigurationPath);
 
                 // Initialize the process information.

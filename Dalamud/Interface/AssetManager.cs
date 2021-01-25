@@ -28,7 +28,7 @@ namespace Dalamud.Interface
             {"https://img.finalfantasyxiv.com/lds/pc/global/fonts/FFXIV_Lodestone_SSF.ttf", "UIRes/gamesym.ttf" }
         };
 
-        public static async Task<bool> EnsureAssets(string baseDir) {
+        public static bool EnsureAssets(string baseDir) {
             using var client = new WebClient();
 
             Log.Verbose("[ASSET] Starting asset download");
