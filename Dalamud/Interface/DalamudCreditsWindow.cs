@@ -30,12 +30,13 @@ nibs/Poliwrath
 karashiiro
 Pohky
 daemitus
+Aireil
 
 
 
 Localization by:
 
-Airiel
+Aireil
 Akira
 area402
 Ridge

@@ -72,5 +72,35 @@ namespace Dalamud.Plugin
         /// The number of downloads this plugin has.
         /// </summary>
         public long DownloadCount { get; set; }
+
+        /// <summary>
+        /// The last time this plugin was updated.
+        /// </summary>
+        public long LastUpdate { get; set; }
+
+        /// <summary>
+        /// Domain of the origin repo
+        /// </summary>
+        public string FromRepo { get; set; }
+        
+        /// <summary>
+        /// Download link used to install the plugin.
+        /// </summary>
+        public string DownloadLinkInstall { get; set; }
+
+        /// <summary>
+        /// Download link used to update the plugin.
+        /// </summary>
+        public string DownloadLinkUpdate { get; set; }
+
+        /// <summary>
+        /// Download link used to get testing versions of the plugin.
+        /// </summary>
+        public string DownloadLinkTesting { get; set; }
+
+        /// <summary>
+        /// Load priority for this plugin. Higher values means higher priority. 0 is default priority.
+        /// </summary>
+        public int LoadPriority { get; set; }
     }
 }

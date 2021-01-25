@@ -91,11 +91,6 @@ namespace Dalamud.Game.ClientState.Structs
         [FieldOffset(ActorOffsets.PlayerCharacterTargetActorId)] public int PlayerCharacterTargetActorId;
         [FieldOffset(ActorOffsets.BattleNpcTargetActorId)] public int BattleNpcTargetActorId;
 
-        // This field can't be correctly aligned, so we have to cut it manually.
-        [FieldOffset(ActorOffsets.CompanyTag)]
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 15)]
-        public byte[] CompanyTag;
-
         [FieldOffset(ActorOffsets.NameId)] public int NameId;
         [FieldOffset(ActorOffsets.CurrentWorld)] public ushort CurrentWorld;
         [FieldOffset(ActorOffsets.HomeWorld)] public ushort HomeWorld;

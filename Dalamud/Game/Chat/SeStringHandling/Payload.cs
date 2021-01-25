@@ -130,6 +130,10 @@ namespace Dalamud.Game.Chat.SeStringHandling
                     payload = new EmphasisItalicPayload();
                     break;
 
+                case SeStringChunkType.SeHyphen:
+                    payload = SeHyphenPayload.Payload;
+                    break;
+
                 case SeStringChunkType.Interactable:
                     {
                         var subType = (EmbeddedInfoType)reader.ReadByte();
@@ -149,6 +153,14 @@ namespace Dalamud.Game.Chat.SeStringHandling
 
                             case EmbeddedInfoType.Status:
                                 payload = new StatusPayload();
+                                break;
+
+                            case EmbeddedInfoType.QuestLink:
+                                payload = new QuestPayload();
+                                break;
+
+                            case EmbeddedInfoType.DalamudLink:
+                                payload = new DalamudLinkPayload();
                                 break;
 
                             case EmbeddedInfoType.LinkTerminator:
@@ -214,18 +226,22 @@ namespace Dalamud.Game.Chat.SeStringHandling
         {
             Icon = 0x12,
             EmphasisItalic = 0x1A,
+            SeHyphen = 0x1F,
             Interactable = 0x27,
             AutoTranslateKey = 0x2E,
             UIForeground = 0x48,
             UIGlow = 0x49
         }
 
-        protected enum EmbeddedInfoType
+        public enum EmbeddedInfoType
         {
             PlayerName = 0x01,
             ItemLink = 0x03,
             MapPositionLink = 0x04,
+            QuestLink = 0x05,
             Status = 0x09,
+
+            DalamudLink = 0x0F, // Dalamud Custom
 
             LinkTerminator = 0xCF // not clear but seems to always follow a link
         }

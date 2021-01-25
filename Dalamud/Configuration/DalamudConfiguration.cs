@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Dalamud.Configuration;
-using Dalamud.DiscordBot;
 using Dalamud.Game.Chat;
 using Newtonsoft.Json;
 using Serilog;
@@ -12,10 +11,6 @@ namespace Dalamud
     [Serializable]
     internal class DalamudConfiguration
     {
-        public DiscordFeatureConfiguration DiscordFeatureConfig { get; set; }
-
-        public bool OptOutMbCollection { get; set; } = false;
-
         public List<string> BadWords { get; set; }
 
         public bool DutyFinderTaskbarFlash { get; set; } = true;
@@ -29,11 +24,16 @@ namespace Dalamud
 
         public bool DoPluginTest { get; set; } = false;
         public bool DoDalamudTest { get; set; } = false;
+        public List<ThirdRepoSetting> ThirdRepoList { get; set; } = new List<ThirdRepoSetting>();
+        public List<string> HiddenPluginInternalName { get; set; } = new List<string>();
 
         public float GlobalUiScale { get; set; } = 1.0f;
         public bool ToggleUiHide { get; set; } = true;
         public bool ToggleUiHideDuringCutscenes { get; set; } = true;
         public bool ToggleUiHideDuringGpose { get; set; } = true;
+
+        public bool PrintPluginsWelcomeMsg { get; set; } = true;
+        public bool AutoUpdatePlugins { get; set; } = false;
 
         [JsonIgnore]
         public string ConfigPath;

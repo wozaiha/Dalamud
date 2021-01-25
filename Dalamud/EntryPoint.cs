@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using Dalamud.Interface;
 using EasyHook;
@@ -19,7 +20,10 @@ namespace Dalamud {
             var (logger, levelSwitch) = NewLogger(info.WorkingDirectory);
             Log.Logger = logger;
 
+            var finishSignal = new ManualResetEvent(false);
+
             try {
+                Log.Information(new string('-', 80));
                 Log.Information("Initializing a session..");
 
                 // This is due to GitHub not supporting TLS 1.0, so we enable all TLS versions globally
@@ -30,12 +34,14 @@ namespace Dalamud {
                 AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
                 TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
 
-                using var dalamud = new Dalamud(info, levelSwitch);
+                var dalamud = new Dalamud(info, levelSwitch, finishSignal);
                 Log.Information("Starting a session..");
                     
                 // Run session
                 dalamud.Start();
                 dalamud.WaitForUnload();
+
+                dalamud.Dispose();
             } catch (Exception ex) {
                 Log.Fatal(ex, "Unhandled exception on main thread.");
             } finally {
@@ -43,6 +49,8 @@ namespace Dalamud {
                 
                 Log.Information("Session has ended.");
                 Log.CloseAndFlush();
+
+                finishSignal.Set();
             }
         }
 
@@ -58,7 +66,7 @@ namespace Dalamud {
 #endif
 
             var newLogger =  new LoggerConfiguration()
-                   .WriteTo.Async(a => a.File(logPath))
+                   .WriteTo.Async(a => a.File(logPath, outputTemplate: "{Timestamp:HH:mm:ss.fff}[{Level:u3}] {Message:lj}{NewLine}{Exception}"))
                    .WriteTo.EventSink()
                    .MinimumLevel.ControlledBy(levelSwitch)
                    .CreateLogger();

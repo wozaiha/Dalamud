@@ -13,9 +13,13 @@ namespace Dalamud.Interface {
 
         private const bool WarrantsChangelog = false;
         private const string ChangeLog =
-            @"* Various backend changes that will allow for more involved plugins
-* Fixed an issue wherein, in particular cases, chat messages from plugins would be incorrectly allocated
-* Beta/Testing plugins can now be used in conjunction with regular plugins. Join our discord to check out plugins for testing!";
+            @"* Fixed various bugs with plugins not installing correctly or causing crashes in certain situations
+* All installed plugins, regardless of their status in the repository, are now shown
+* Plugins are now grouped by installation state in the installer
+
+If you have previously encoutered issues with plugins since 5.4, they should be resolved now for most of them.
+
+As this is a major patch and we have made several backend changes, please keep in mind that it may take a little bit for all of your favorite plugins to be available again.";
 
         public DalamudChangelogWindow(Dalamud dalamud) {
             this.dalamud = dalamud;
@@ -46,7 +50,7 @@ namespace Dalamud.Interface {
             ImGui.PushFont(InterfaceManager.IconFont);
 
             if (ImGui.Button(FontAwesomeIcon.Download.ToIconString())) 
-                this.dalamud.OpenPluginInstaller();
+                this.dalamud.DalamudUi.OpenPluginInstaller();
 
             if (ImGui.IsItemHovered()) {
                 ImGui.PopFont();

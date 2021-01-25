@@ -15,7 +15,7 @@ namespace Dalamud.Game.ClientState
         // Functions
         public IntPtr SetupTerritoryType { get; private set; }
         //public IntPtr SomeActorTableAccess { get; private set; }
-        public IntPtr PartyListUpdate { get; private set; }
+        //public IntPtr PartyListUpdate { get; private set; }
         
         public IntPtr ConditionFlags { get; private set; }
 
@@ -35,8 +35,7 @@ namespace Dalamud.Game.ClientState
             // This resolves to a fixed offset only, without the base address added in, so GetStaticAddressFromSig() can't be used
             KeyboardState = sig.ScanText("48 8D 0C 85 ?? ?? ?? ?? 8B 04 31 85 C2 0F 85") + 0x4;
 
-            // PartyListUpdate = sig.ScanText("E8 ?? ?? ?? ?? 49 8B D4 4C 8D 87 ?? ?? ?? ??");
-            PartyListUpdate = sig.ScanText("E8 ?? ?? ?? ?? 49 8B D7 4C 8D 86 ?? ?? ?? ??"); // 5.3
+            //PartyListUpdate = sig.ScanText("E8 ?? ?? ?? ?? 49 8B D7 4C 8D 86 ?? ?? ?? ??");
 
             // ConditionFlags = sig.GetStaticAddressFromSig("48 8D 0D ?? ?? ?? ?? BA ?? ?? ?? ?? 45 33 C0");
             ConditionFlags = sig.GetStaticAddressFromSig("48 8D 0D ?? ?? ?? ?? BA ?? ?? ?? ?? E8 ?? ?? ?? ?? B0 01 48 83 C4 30"); // 5.3

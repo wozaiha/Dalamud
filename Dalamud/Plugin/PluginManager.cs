@@ -12,7 +12,7 @@ using Serilog;
 namespace Dalamud.Plugin
 {
     internal class PluginManager {
-        public static int DALAMUD_API_LEVEL = 1;
+        public static int DALAMUD_API_LEVEL = 2;
 
         private readonly Dalamud dalamud;
         private readonly string pluginDirectory;
@@ -22,7 +22,7 @@ namespace Dalamud.Plugin
 
         private readonly Type interfaceType = typeof(IDalamudPlugin);
 
-        public readonly List<(IDalamudPlugin Plugin, PluginDefinition Definition, DalamudPluginInterface PluginInterface)> Plugins = new List<(IDalamudPlugin plugin, PluginDefinition def, DalamudPluginInterface PluginInterface)>();
+        public readonly List<(IDalamudPlugin Plugin, PluginDefinition Definition, DalamudPluginInterface PluginInterface, bool IsRaw)> Plugins = new List<(IDalamudPlugin plugin, PluginDefinition def, DalamudPluginInterface PluginInterface, bool IsRaw)>();
 
         public List<(string SourcePluginName, string SubPluginName, Action<ExpandoObject> SubAction)> IpcSubscriptions = new List<(string SourcePluginName, string SubPluginName, Action<ExpandoObject> SubAction)>();
 
@@ -80,15 +80,22 @@ namespace Dalamud.Plugin
 
             // Need to do it with Open so the file handle gets closed immediately
             // TODO: Don't use the ".disabled" crap, do it in a config
-            var disabledFile = File.Open(Path.Combine(outputDir.FullName, ".disabled"), FileMode.Create);
-            disabledFile.Close();
+            try {
+                File.Open(Path.Combine(outputDir.FullName, ".disabled"), FileMode.Create).Close();
+            } catch (Exception ex) {
+                Log.Error(ex, "Could not create the .disabled file, disabling all versions...");
+                foreach (var version in outputDir.Parent.GetDirectories()) {
+                    if (!File.Exists(Path.Combine(version.FullName, ".disabled")))
+                        File.Open(Path.Combine(version.FullName, ".disabled"), FileMode.Create).Close();
+                }
+            }
 
             thisPlugin.Plugin.Dispose();
 
             this.Plugins.Remove(thisPlugin);
         }
 
-        public bool LoadPluginFromAssembly(FileInfo dllFile, bool raw, PluginLoadReason reason) {
+        public bool LoadPluginFromAssembly(FileInfo dllFile, bool raw, PluginLoadReason reason, bool preloaded = false, PluginDefinition preloadedDef = null) {
             Log.Information("Loading plugin at {0}", dllFile.Directory.FullName);
 
             // If this entire folder has been marked as a disabled plugin, don't even try to load anything
@@ -105,32 +112,50 @@ namespace Dalamud.Plugin
                 return false;
             }
 
-            // read the plugin def if present - again, fail before actually trying to load the dll if there is a problem
-            var defJsonFile = new FileInfo(Path.Combine(dllFile.Directory.FullName, $"{Path.GetFileNameWithoutExtension(dllFile.Name)}.json"));
-
             PluginDefinition pluginDef = null;
-            // load the definition if it exists, even for raw/developer plugins
-            if (defJsonFile.Exists)
-            {
-                Log.Information("Loading definition for plugin DLL {0}", dllFile.FullName);
 
-                pluginDef =
-                    JsonConvert.DeserializeObject<PluginDefinition>(
-                        File.ReadAllText(defJsonFile.FullName));
-
-                if (pluginDef.ApplicableVersion != this.dalamud.StartInfo.GameVersion && pluginDef.ApplicableVersion != "any")
+            // Preloaded
+            if (preloaded) {
+                if (preloadedDef == null && !raw)
+                {
+                    Log.Information("Plugin DLL {0} has no definition.", dllFile.FullName);
+                    return false;
+                }
+                if (preloadedDef != null && 
+                    preloadedDef.ApplicableVersion != this.dalamud.StartInfo.GameVersion && 
+                    preloadedDef.ApplicableVersion != "any")
                 {
                     Log.Information("Plugin {0} has not applicable version.", dllFile.FullName);
                     return false;
                 }
+                pluginDef = preloadedDef;
+            } else {
+                // read the plugin def if present - again, fail before actually trying to load the dll if there is a problem
+                var defJsonFile = new FileInfo(Path.Combine(dllFile.Directory.FullName, $"{Path.GetFileNameWithoutExtension(dllFile.Name)}.json"));
+            
+                // load the definition if it exists, even for raw/developer plugins
+                if (defJsonFile.Exists)
+                {
+                    Log.Information("Loading definition for plugin DLL {0}", dllFile.FullName);
+            
+                    pluginDef =
+                        JsonConvert.DeserializeObject<PluginDefinition>(
+                            File.ReadAllText(defJsonFile.FullName));
+            
+                    if (pluginDef.ApplicableVersion != this.dalamud.StartInfo.GameVersion && pluginDef.ApplicableVersion != "any")
+                    {
+                        Log.Information("Plugin {0} has not applicable version.", dllFile.FullName);
+                        return false;
+                    }
+                }
+                // but developer plugins don't require one to load
+                else if (!raw)
+                {
+                    Log.Information("Plugin DLL {0} has no definition.", dllFile.FullName);
+                    return false;
+                }
             }
-            // but developer plugins don't require one to load
-            else if (!raw)
-            {
-                Log.Information("Plugin DLL {0} has no definition.", dllFile.FullName);
-                return false;
-            }
-
+            
             // TODO: given that it exists, the pluginDef's InternalName should probably be used
             // as the actual assembly to load
             // But plugins should also probably be loaded by directory and not by looking for every dll
@@ -170,9 +195,10 @@ namespace Dalamud.Plugin
                         IsHide = false,
                         DalamudApiLevel = DALAMUD_API_LEVEL
                     };
-                    /*
-                    if (pluginDef.DalamudApiLevel != DALAMUD_API_LEVEL) {
+
+                    if (pluginDef.DalamudApiLevel < DALAMUD_API_LEVEL) {
                         Log.Error("Incompatible API level: {0}", dllFile.FullName);
+                        disabledFile.Create().Close();
                         return false;
                     }*/
 
@@ -180,7 +206,7 @@ namespace Dalamud.Plugin
                     plugin.Initialize(dalamudInterface);
 
                     Log.Information("Loaded plugin: {0}", plugin.Name);
-                    this.Plugins.Add((plugin, pluginDef, dalamudInterface));
+                    this.Plugins.Add((plugin, pluginDef, dalamudInterface, raw));
 
                     return true;
                 }
@@ -195,17 +221,40 @@ namespace Dalamud.Plugin
             if (folder.Exists)
             { 
                 Log.Information("Loading plugins at {0}", folder);
-
                 var pluginDlls = folder.GetFiles("*.dll", SearchOption.AllDirectories);
-
+                
+                // Preload definitions to be able to determine load order
+                var pluginDefs = new List<(FileInfo dllFile, PluginDefinition definition)>();
                 foreach (var dllFile in pluginDlls) {
+                    var defJson = new FileInfo(Path.Combine(dllFile.Directory.FullName, $"{Path.GetFileNameWithoutExtension(dllFile.Name)}.json"));
+                    PluginDefinition def = null;
+                    if (defJson.Exists)
+                        def = JsonConvert.DeserializeObject<PluginDefinition>(File.ReadAllText(defJson.FullName));
+                    pluginDefs.Add((dllFile, def));
+                }
+                
+                // Sort for load order - unloaded definitions have default priority of 0
+                pluginDefs.Sort(
+                (info1, info2) => {
+                    var prio1 = info1.definition?.LoadPriority ?? 0;
+                    var prio2 = info2.definition?.LoadPriority ?? 0;
+                    return prio2.CompareTo(prio1);
+                });
+
+                // Pass preloaded definitions to LoadPluginFromAssembly, because we already loaded them anyways
+                foreach (var infos in pluginDefs) {
                     try {
-                        LoadPluginFromAssembly(dllFile, raw, PluginLoadReason.Boot);
+                        LoadPluginFromAssembly(infos.dllFile, raw, PluginLoadReason.Boot, true, infos.definition);
                     } catch (Exception ex) {
-                        Log.Error(ex, $"Plugin load for {dllFile.FullName} failed.");
+                        Log.Error(ex, $"Plugin load for {infos.dllFile.FullName} failed.");
                     }
                 }
             }
+        }
+
+        public void ReloadPlugins() {
+            UnloadPlugins();
+            LoadPlugins();
         }
     }
 }

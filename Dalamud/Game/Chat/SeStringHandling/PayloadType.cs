@@ -47,8 +47,17 @@ namespace Dalamud.Game.Chat.SeStringHandling
         /// </summary>
         Icon,
         /// <summary>
+        /// A SeString payload representing a quest link.
+        /// </summary>
+        Quest,
+        /// <summary>
+        /// A SeString payload representing a custom clickable link for dalamud plugins
+        /// </summary>
+        DalamudLink,
+        /// <summary>
         /// An SeString payload representing any data we don't handle.
         /// </summary>
-        Unknown
+        Unknown,
+        SeHyphen,
     }
 }

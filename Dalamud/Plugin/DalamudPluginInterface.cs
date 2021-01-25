@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Dynamic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -10,6 +11,7 @@ using Dalamud.Configuration;
 using Dalamud.Data;
 using Dalamud.Game;
 using Dalamud.Game.Chat.SeStringHandling;
+using Dalamud.Game.Chat.SeStringHandling.Payloads;
 using Dalamud.Game.ClientState;
 using Dalamud.Game.Command;
 using Dalamud.Game.Internal;
@@ -26,6 +28,21 @@ namespace Dalamud.Plugin
         /// The reason this plugin was loaded.
         /// </summary>
         public PluginLoadReason Reason { get; }
+
+        /// <summary>
+        /// Get the directory Dalamud assets are stored in.
+        /// </summary>
+        public DirectoryInfo DalamudAssetDirectory => this.dalamud.AssetDirectory;
+
+        /// <summary>
+        /// Get the directory your plugin configurations are stored in.
+        /// </summary>
+        public DirectoryInfo ConfigDirectory => new DirectoryInfo(GetPluginConfigDirectory());
+
+        /// <summary>
+        /// Get the config file of your plugin.
+        /// </summary>
+        public FileInfo ConfigFile => this.configs.GetConfigFile(this.pluginName);
 
         /// <summary>
         /// The CommandManager object that allows you to add and remove custom chat commands.
@@ -61,7 +78,16 @@ namespace Dalamud.Plugin
         /// A <see cref="SeStringManager">SeStringManager</see> instance which allows creating and parsing SeString payloads.
         /// </summary>
         public readonly SeStringManager SeStringManager;
-        
+
+        /// <summary>
+        /// Returns true if Dalamud is running in Debug mode or the /xldev menu is open. This can occur on release builds.
+        /// </summary>
+#if DEBUG
+        public bool IsDebugging => true;
+#else
+        public bool IsDebugging => this.dalamud.DalamudUi.IsDevMenu;
+#endif
+
         private readonly Dalamud dalamud;
         private readonly string pluginName;
         private readonly PluginConfigurations configs;
@@ -90,6 +116,7 @@ namespace Dalamud.Plugin
         /// </summary>
         public void Dispose() {
             this.UiBuilder.Dispose();
+            this.Framework.Gui.Chat.RemoveChatLinkHandler(this.pluginName);
         }
 
         /// <summary>
@@ -128,6 +155,40 @@ namespace Dalamud.Plugin
             // this shouldn't be a thing, I think, but just in case
             return this.configs.Load(this.pluginName);
         }
+
+        /// <summary>
+        /// Get the config directory
+        /// </summary>
+        /// <returns>directory with path of AppData/XIVLauncher/pluginConfig/PluginInternalName </returns>
+        public string GetPluginConfigDirectory() => this.configs.GetDirectory(this.pluginName);
+
+        #region Chat Links
+
+        /// <summary>
+        /// Register a chat link handler.
+        /// </summary>
+        /// <param name="commandId"></param>
+        /// <param name="commandAction"></param>
+        /// <returns>Returns an SeString payload for the link.</returns>
+        public DalamudLinkPayload AddChatLinkHandler(uint commandId, Action<uint, SeString> commandAction) {
+            return this.Framework.Gui.Chat.AddChatLinkHandler(this.pluginName, commandId, commandAction);
+        }
+
+        /// <summary>
+        /// Remove a chat link handler.
+        /// </summary>
+        /// <param name="commandId"></param>
+        public void RemoveChatLinkHandler(uint commandId) {
+            this.Framework.Gui.Chat.RemoveChatLinkHandler(this.pluginName, commandId);
+        }
+
+        /// <summary>
+        /// Removes all chat link handlers registered by the plugin.
+        /// </summary>
+        public void RemoveChatLinkHandler() {
+            this.Framework.Gui.Chat.RemoveChatLinkHandler(this.pluginName);
+        }
+        #endregion
 
         #region IPC
 
@@ -199,7 +260,7 @@ namespace Dalamud.Plugin
         /// <returns>True if the corresponding plugin was present and received the message.</returns>
         public bool SendMessage(string pluginName, ExpandoObject message)
         {
-            var (_, _, pluginInterface) = this.dalamud.PluginManager.Plugins.FirstOrDefault(x => x.Definition.InternalName == this.pluginName);
+            var (_, _, pluginInterface, _) = this.dalamud.PluginManager.Plugins.FirstOrDefault(x => x.Definition.InternalName == pluginName);
 
             if (pluginInterface?.anyPluginIpcAction == null)
                 return false;

@@ -4,6 +4,7 @@ using System.IO;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using Dalamud.Game;
 using Dalamud.Game.Internal.DXGI;
 using Dalamud.Hooking;
@@ -11,6 +12,7 @@ using EasyHook;
 using ImGuiNET;
 using ImGuiScene;
 using Serilog;
+using SharpDX.Direct3D11;
 
 // general dev notes, here because it's easiest
 /*
@@ -41,10 +43,15 @@ namespace Dalamud.Interface
         [UnmanagedFunctionPointer(CallingConvention.ThisCall)]
         private delegate IntPtr SetCursorDelegate(IntPtr hCursor);
 
+        private ManualResetEvent fontBuildSignal;
+
         private ISwapChainAddressResolver Address { get; }
 
         private Dalamud dalamud;
         private RawDX11Scene scene;
+
+        public Device Device => this.scene.Device;
+        public IntPtr WindowHandlePtr => this.scene.WindowHandlePtr;
 
         private delegate void InstallRTSSHook();
         private string rtssPath;
@@ -64,6 +71,8 @@ namespace Dalamud.Interface
         {
             this.dalamud = dalamud;
 
+            this.fontBuildSignal = new ManualResetEvent(false);
+
             try {
                 //throw new Exception("Skip SwapChain sig search.");
                 var sigResolver = new SwapChainSigResolver();
@@ -74,7 +83,7 @@ namespace Dalamud.Interface
                 Address = sigResolver;
             } catch (Exception ex) {
                 // The SigScanner method fails on wine/proton since DXGI is not a real DLL. We fall back to vtable to detect our Present function address.
-                Log.Error(ex, "Could not get SwapChain address via sig method, falling back to vtable...");
+                Log.Debug(ex, "Could not get SwapChain address via sig method, falling back to vtable...");
 
                 var vtableResolver = new SwapChainVtableResolver();
                 vtableResolver.Setup(scanner);
@@ -156,7 +165,7 @@ namespace Dalamud.Interface
             // calls to PresentDetour have finished (and Disable means no new ones will start), before we try to cleanup
             // So... not great, but much better than constantly crashing on unload
             this.Disable();
-            System.Threading.Thread.Sleep(100);
+            System.Threading.Thread.Sleep(500);
 
             this.scene?.Dispose();
             this.presentHook.Dispose();
@@ -219,9 +228,9 @@ namespace Dalamud.Interface
 
         private IntPtr PresentDetour(IntPtr swapChain, uint syncInterval, uint presentFlags)
         {
-            if (this.scene == null)
-            {
+            if (this.scene == null) {
                 this.scene = new RawDX11Scene(swapChain);
+
                 this.scene.ImGuiIniPath = Path.Combine(Path.GetDirectoryName(this.dalamud.StartInfo.ConfigurationPath), "dalamudUI.ini");
                 this.scene.OnBuildUI += Display;
                 this.scene.OnNewInputFrame += OnNewInputFrame;
@@ -269,6 +278,8 @@ namespace Dalamud.Interface
 
         private unsafe void SetupFonts()
         {
+            this.fontBuildSignal.Reset();
+
             ImGui.GetIO().Fonts.Clear();
 
             ImFontConfigPtr fontConfig = ImGuiNative.ImFontConfig_ImFontConfig();
@@ -281,7 +292,7 @@ namespace Dalamud.Interface
 
             DefaultFont = ImGui.GetIO().Fonts.AddFontFromFileTTF(fontPathSc, 17.0f, null, chineseRangeHandle.AddrOfPinnedObject());
 
-            var fontPathGame = Path.Combine(this.dalamud.StartInfo.WorkingDirectory, "UIRes", "gamesym.ttf");
+            var fontPathGame = Path.Combine(this.dalamud.AssetDirectory.FullName, "UIRes", "gamesym.ttf");
 
             var gameRangeHandle = GCHandle.Alloc(new ushort[]
             {
@@ -292,7 +303,7 @@ namespace Dalamud.Interface
 
             ImGui.GetIO().Fonts.AddFontFromFileTTF(fontPathGame, 17.0f, fontConfig, gameRangeHandle.AddrOfPinnedObject());
 
-            var fontPathIcon = Path.Combine(this.dalamud.StartInfo.WorkingDirectory, "UIRes", "FontAwesome5FreeSolid.otf");
+            var fontPathIcon = Path.Combine(this.dalamud.AssetDirectory.FullName, "UIRes", "FontAwesome5FreeSolid.otf");
 
             var iconRangeHandle = GCHandle.Alloc(new ushort[]
             {
@@ -314,10 +325,16 @@ namespace Dalamud.Interface
 
             Log.Verbose("[FONT] Fonts built!");
 
+            this.fontBuildSignal.Set();
+
             fontConfig.Destroy();
             chineseRangeHandle.Free();
             gameRangeHandle.Free();
             iconRangeHandle.Free();
+        }
+
+        public void WaitForFontRebuild() {
+            this.fontBuildSignal.WaitOne();
         }
 
         // This is intended to only be called as a handler attached to scene.OnNewRenderFrame

@@ -8,8 +8,7 @@ namespace Dalamud.Game.Internal {
         public IntPtr GuiManager { get; private set; }
         
         public IntPtr ScriptManager { get; private set; }
-        
-        
+
         protected override void Setup64Bit(SigScanner sig) {
             SetupFramework(sig);
             
