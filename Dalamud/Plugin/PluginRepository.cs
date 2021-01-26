@@ -138,6 +138,7 @@ namespace Dalamud.Plugin
                 {
                     Log.Information(e, "Plugin download failed not hard, trying fastgit.");
                     url = Regex.Replace(url, @"https:\/\/gitee\.com\/(.*)?\/(.*)?\/raw", "https://raw.fastgit.org/$1/$2");
+                    url = Regex.Replace(url, @"https:\/\/raw\.githubusercontent\.com", "https://raw.fastgit.org");
                     Log.Information("Downloading plugin to {0} from {1} doTestingDownload:{2} isTestingExclusive:{3}", path, url, doTestingDownload, definition.IsTestingExclusive);
                     client.DownloadFile(url, path);
                     Log.Information("Extracting to {0}", outputDir);
