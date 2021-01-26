@@ -7,6 +7,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using CheapLoc;
 using Dalamud.Game.Chat;
@@ -127,12 +128,21 @@ namespace Dalamud.Plugin
                     url = definition.DownloadLinkUpdate;
 
                 Log.Information("Downloading plugin to {0} from {1} doTestingDownload:{2} isTestingExclusive:{3}", path, url, doTestingDownload, definition.IsTestingExclusive);
-
-                client.DownloadFile(url, path);
-
-                Log.Information("Extracting to {0}", outputDir);
-
-                ZipFile.ExtractToDirectory(path, outputDir.FullName);
+                try
+                {
+                    client.DownloadFile(url, path);
+                    Log.Information("Extracting to {0}", outputDir);
+                    ZipFile.ExtractToDirectory(path, outputDir.FullName);
+                }
+                catch (Exception e)
+                {
+                    Log.Information(e, "Plugin download failed not hard, trying fastgit.");
+                    url = Regex.Replace(url, @"https:\/\/gitee\.com\/bluefissure\/DalamudPlugins\/raw", "https://raw.fastgit.org/bluefissure/DalamudPlugins");
+                    Log.Information("Downloading plugin to {0} from {1} doTestingDownload:{2} isTestingExclusive:{3}", path, url, doTestingDownload, definition.IsTestingExclusive);
+                    client.DownloadFile(url, path);
+                    Log.Information("Extracting to {0}", outputDir);
+                    ZipFile.ExtractToDirectory(path, outputDir.FullName);
+                }
 
                 if (wasDisabled || !enableAfterInstall) {
                     disabledFile.Create().Close();
