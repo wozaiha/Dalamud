@@ -137,7 +137,7 @@ namespace Dalamud.Plugin
                 catch (Exception e)
                 {
                     Log.Information(e, "Plugin download failed not hard, trying fastgit.");
-                    url = Regex.Replace(url, @"https:\/\/gitee\.com\/bluefissure\/DalamudPlugins\/raw", "https://raw.fastgit.org/bluefissure/DalamudPlugins");
+                    Regex.Replace(url, @"https:\/\/gitee\.com\/(.*)?\/(.*)?\/raw", "https://raw.fastgit.org/$1/$2");
                     Log.Information("Downloading plugin to {0} from {1} doTestingDownload:{2} isTestingExclusive:{3}", path, url, doTestingDownload, definition.IsTestingExclusive);
                     client.DownloadFile(url, path);
                     Log.Information("Extracting to {0}", outputDir);
