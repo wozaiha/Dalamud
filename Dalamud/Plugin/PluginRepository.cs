@@ -18,9 +18,7 @@ namespace Dalamud.Plugin
 {
     internal class PluginRepository
     {
-        private string PluginRepoBaseUrl => "https://gitee.com/bluefissure/DalamudPlugins/raw/cn/plugins/{0}/latest.zip";
-        // private string PluginFunctionBaseUrl => "https://us-central1-xl-functions.cloudfunctions.net/download-plugin/?plugin={0}&isUpdate={1}";
-        private string PluginMasterUrl => "https://gitee.com/bluefissure/DalamudPlugins/raw/cn/pluginmaster.json";
+        private string PluginMasterUrl => "https://raw.fastgit.org/Bluefissure/DalamudPlugins/cn/pluginmaster.json";
 
         private readonly Dalamud dalamud;
         private string pluginDirectory;

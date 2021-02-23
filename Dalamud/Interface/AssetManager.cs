@@ -11,7 +11,7 @@ using Serilog;
 namespace Dalamud.Interface
 {
     class AssetManager {
-        private const string AssetStoreUrl = "https://bluefissure.gitee.io/dalamudassets/";
+        private const string AssetStoreUrl = "https://raw.fastgit.org/Bluefissure/DalamudAssets/cn/";
 
         private static readonly Dictionary<string, string> AssetDictionary = new Dictionary<string, string> {
             {AssetStoreUrl + "UIRes/serveropcode.json", "UIRes/serveropcode.json" },
