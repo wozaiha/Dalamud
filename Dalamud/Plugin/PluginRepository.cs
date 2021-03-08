@@ -18,7 +18,7 @@ namespace Dalamud.Plugin
 {
     internal class PluginRepository
     {
-        private string PluginMasterUrl => "https://raw.fastgit.org/Bluefissure/DalamudPlugins/cn/pluginmaster.json";
+        private string PluginMasterUrl => "https://dalamudplugins-1253720819.cos.ap-nanjing.myqcloud.com/pluginmaster.json";
 
         private readonly Dalamud dalamud;
         private string pluginDirectory;

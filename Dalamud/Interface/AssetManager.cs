@@ -11,7 +11,7 @@ using Serilog;
 namespace Dalamud.Interface
 {
     class AssetManager {
-        private const string AssetStoreUrl = "https://raw.fastgit.org/Bluefissure/DalamudAssets/cn/";
+        private const string AssetStoreUrl = "https://dalamudassets-1253720819.cos.ap-nanjing.myqcloud.com/";
 
         private static readonly Dictionary<string, string> AssetDictionary = new Dictionary<string, string> {
             {AssetStoreUrl + "UIRes/serveropcode.json", "UIRes/serveropcode.json" },
@@ -25,7 +25,7 @@ namespace Dalamud.Interface
             {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_it.json", "UIRes/loc/dalamud/dalamud_it.json" },
             {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_ja.json", "UIRes/loc/dalamud/dalamud_ja.json" },
             {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_zh.json", "UIRes/loc/dalamud/dalamud_zh.json" },
-            {"https://img.finalfantasyxiv.com/lds/pc/global/fonts/FFXIV_Lodestone_SSF.ttf", "UIRes/gamesym.ttf" }
+            {AssetStoreUrl + "UIRes/gamesym.ttf", "UIRes/gamesym.ttf" }
         };
 
         public static bool EnsureAssets(string baseDir) {
