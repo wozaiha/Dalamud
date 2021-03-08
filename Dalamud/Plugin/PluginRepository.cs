@@ -6,6 +6,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -37,13 +38,15 @@ namespace Dalamud.Plugin
         public PluginRepository(Dalamud dalamud, string pluginDirectory, string gameVersion) {
             this.dalamud = dalamud;
             this.pluginDirectory = pluginDirectory;
+
+            ReloadPluginMasterAsync();
         }
 
         public void ReloadPluginMasterAsync() {
+            State = InitializationState.InProgress;
+
             Task.Run(() => {
                 this.PluginMaster = null;
-
-                State = InitializationState.InProgress;
 
                 var allPlugins = new List<PluginDefinition>();
 
@@ -53,19 +56,21 @@ namespace Dalamud.Plugin
                 try {
                     using var client = new WebClient();
 
+                    var repoNumber = 0;
                     foreach (var repo in repos) {
                         Log.Information("[PLUGINR] Fetching repo: {0}", repo);
                         
                         var data = client.DownloadString(repo);
 
                         var unsortedPluginMaster = JsonConvert.DeserializeObject<List<PluginDefinition>>(data);
-                        var host = new Uri(repo).Host;
 
                         foreach (var pluginDefinition in unsortedPluginMaster) {
-                            pluginDefinition.FromRepo = host;
+                            pluginDefinition.RepoNumber = repoNumber;
                         }
 
                         allPlugins.AddRange(unsortedPluginMaster);
+
+                        repoNumber++;
                     }
 
                     this.PluginMaster = allPlugins.AsReadOnly();
@@ -158,8 +163,13 @@ namespace Dalamud.Plugin
 
                 return this.dalamud.PluginManager.LoadPluginFromAssembly(dllFile, false, PluginLoadReason.Installer);
             }
-            catch (Exception e) {
-                Log.Error(e, "Plugin download failed hard.");
+            catch (Exception ex) {
+                Log.Error(ex, "Plugin download failed hard.");
+                if (ex is ReflectionTypeLoadException typeLoadException) {
+                    foreach (var exception in typeLoadException.LoaderExceptions) {
+                        Log.Error(exception, "LoaderException:");
+                    }
+                }
                 return false;
             }
         }
@@ -195,7 +205,19 @@ namespace Dalamud.Plugin
                         });
                         var latest = sortedVersions.Last();
 
-                        if (File.Exists(Path.Combine(latest.FullName, ".disabled")) && !File.Exists(Path.Combine(latest.FullName, ".testing"))) {
+                        var isEnabled = !File.Exists(Path.Combine(latest.FullName, ".disabled"));
+                        if (!isEnabled && File.Exists(Path.Combine(latest.FullName, ".testing"))) {
+                            // In case testing is installed, but stable is enabled
+                            foreach (var version in versions) {
+                                if (!File.Exists(Path.Combine(version.FullName, ".disabled"))) {
+                                    isEnabled = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!isEnabled) {
+                            Log.Verbose("Is disabled: {0}", installed.FullName);
                             continue;
                         }
 
@@ -209,13 +231,7 @@ namespace Dalamud.Plugin
                         var info = JsonConvert.DeserializeObject<PluginDefinition>(
                             File.ReadAllText(localInfoFile.FullName));
 
-                        if(this.PluginMaster == null)
-                        {
-                            Log.Information("Null PluginMaster");
-                            break;
-                        }
-
-                        var remoteInfo = this.PluginMaster.FirstOrDefault(x => x.Name == info.Name);
+                        var remoteInfo = this.PluginMaster.FirstOrDefault(x => x.InternalName == info.InternalName);
 
                         if (remoteInfo == null) {
                             Log.Information("Is not in pluginmaster: {0}", info.Name);
@@ -243,15 +259,14 @@ namespace Dalamud.Plugin
                             // with an exception if we try to do it twice in row like this
 
                             if (!dryRun) {
-                                var wasEnabled =
+                                var wasLoaded =
                                     this.dalamud.PluginManager.Plugins.Where(x => x.Definition != null).Any(
                                         x => x.Definition.InternalName == info.InternalName);
-                                ;
 
-                                Log.Verbose("wasEnabled: {0}", wasEnabled);
+                                Log.Verbose("isEnabled: {0} / wasLoaded: {1}", isEnabled, wasLoaded);
 
                                 // Try to disable plugin if it is loaded
-                                if (wasEnabled) {
+                                if (wasLoaded) {
                                     try {
                                         this.dalamud.PluginManager.DisablePlugin(info);
                                     }
@@ -273,7 +288,7 @@ namespace Dalamud.Plugin
                                     Log.Error(ex, "Plugin disable old versions failed");
                                 }
 
-                                var installSuccess = InstallPlugin(remoteInfo, wasEnabled, true, testingAvailable);
+                                var installSuccess = InstallPlugin(remoteInfo, isEnabled, true, testingAvailable);
 
                                 if (!installSuccess) {
                                     Log.Error("InstallPlugin failed.");
@@ -302,8 +317,8 @@ namespace Dalamud.Plugin
                     }
                 }
             }
-            catch (Exception e) {
-                Log.Error(e, "Plugin update failed.");
+            catch (Exception ex) {
+                Log.Error(ex, "Plugin update failed.");
                 hasError = true;
             }
 

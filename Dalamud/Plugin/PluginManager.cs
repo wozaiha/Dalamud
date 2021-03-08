@@ -68,8 +68,49 @@ namespace Dalamud.Plugin
         }
 
         public void LoadPlugins() {
-            LoadPluginsAt(new DirectoryInfo(this.pluginDirectory), false);
-            LoadPluginsAt(new DirectoryInfo(this.devPluginDirectory), true);
+            var loadDirectories = new List<(DirectoryInfo dirInfo, bool isRaw)> {
+                (new DirectoryInfo(this.pluginDirectory), false),
+                (new DirectoryInfo(this.devPluginDirectory), true)
+            };
+
+            var pluginDefs = new List<(FileInfo dllFile, PluginDefinition definition, bool isRaw)>();
+            foreach (var (dirInfo, isRaw) in loadDirectories) {
+                if (!dirInfo.Exists) continue;
+
+                var pluginDlls = dirInfo.GetFiles("*.dll", SearchOption.AllDirectories).Where(x => x.Extension == ".dll");
+
+                // Preload definitions to be able to determine load order
+                foreach (var dllFile in pluginDlls) {
+                    var defJson = new FileInfo(Path.Combine(dllFile.Directory.FullName, $"{Path.GetFileNameWithoutExtension(dllFile.Name)}.json"));
+                    PluginDefinition def = null;
+                    if (defJson.Exists)
+                        def = JsonConvert.DeserializeObject<PluginDefinition>(File.ReadAllText(defJson.FullName));
+                    pluginDefs.Add((dllFile, def, isRaw));
+                }
+            }
+
+            // Sort for load order - unloaded definitions have default priority of 0
+            pluginDefs.Sort(
+            (info1, info2) => {
+                var prio1 = info1.definition?.LoadPriority ?? 0;
+                var prio2 = info2.definition?.LoadPriority ?? 0;
+                return prio2.CompareTo(prio1);
+            });
+
+            // Pass preloaded definitions to LoadPluginFromAssembly, because we already loaded them anyways
+            foreach (var (dllFile, definition, isRaw) in pluginDefs) {
+                try {
+                    LoadPluginFromAssembly(dllFile, isRaw, PluginLoadReason.Boot, true, definition);
+                }
+                catch (Exception ex) {
+                    Log.Error(ex, $"Plugin load for {dllFile.FullName} failed.");
+                    if (ex is ReflectionTypeLoadException typeLoadException) {
+                        foreach (var exception in typeLoadException.LoaderExceptions) {
+                            Log.Error(exception, "LoaderException:");
+                        }
+                    }
+                }
+            }
         }
 
         public void DisablePlugin(PluginDefinition definition) {
@@ -95,12 +136,12 @@ namespace Dalamud.Plugin
             this.Plugins.Remove(thisPlugin);
         }
 
-        public bool LoadPluginFromAssembly(FileInfo dllFile, bool raw, PluginLoadReason reason, bool preloaded = false, PluginDefinition preloadedDef = null) {
+        public bool LoadPluginFromAssembly(FileInfo dllFile, bool isRaw, PluginLoadReason reason, bool preloaded = false, PluginDefinition preloadedDef = null) {
             Log.Information("Loading plugin at {0}", dllFile.Directory.FullName);
 
             // If this entire folder has been marked as a disabled plugin, don't even try to load anything
             var disabledFile = new FileInfo(Path.Combine(dllFile.Directory.FullName, ".disabled"));
-            if (disabledFile.Exists && !raw) // should raw/dev plugins really not respect this?
+            if (disabledFile.Exists && !isRaw) // should raw/dev plugins really not respect this?
             {
                 Log.Information("Plugin {0} is disabled.", dllFile.FullName);
                 return false;
@@ -116,7 +157,7 @@ namespace Dalamud.Plugin
 
             // Preloaded
             if (preloaded) {
-                if (preloadedDef == null && !raw)
+                if (preloadedDef == null && !isRaw)
                 {
                     Log.Information("Plugin DLL {0} has no definition.", dllFile.FullName);
                     return false;
@@ -149,7 +190,7 @@ namespace Dalamud.Plugin
                     }
                 }
                 // but developer plugins don't require one to load
-                else if (!raw)
+                else if (!isRaw)
                 {
                     Log.Information("Plugin DLL {0} has no definition.", dllFile.FullName);
                     return false;
@@ -182,6 +223,8 @@ namespace Dalamud.Plugin
                         return false;
                     }
 
+                    Log.Verbose("Plugin CreateInstance...");
+
                     var plugin = (IDalamudPlugin)Activator.CreateInstance(type);
 
                     // this happens for raw plugins that don't specify a PluginDefinition - just generate a dummy one to avoid crashes anywhere
@@ -196,17 +239,33 @@ namespace Dalamud.Plugin
                         DalamudApiLevel = DALAMUD_API_LEVEL
                     };
 
-                    if (pluginDef.DalamudApiLevel < DALAMUD_API_LEVEL) {
-                        Log.Error("Incompatible API level: {0}", dllFile.FullName);
-                        disabledFile.Create().Close();
+                    if (pluginDef.InternalName == "PingPlugin" && pluginDef.AssemblyVersion == "1.11.0.0") {
+                        Log.Error("Banned PingPlugin");
                         return false;
                     }
+
+                    if (pluginDef.InternalName == "FPSPlugin" && pluginDef.AssemblyVersion == "1.4.2.0") {
+                        Log.Error("Banned PingPlugin");
+                        return false;
+                    }
+
+                    if (pluginDef.InternalName == "SonarPlugin" && pluginDef.AssemblyVersion == "0.1.3.1") {
+                        Log.Error("Banned SonarPlugin");
+                        return false;
+                    }
+
+                    if (pluginDef.DalamudApiLevel < DALAMUD_API_LEVEL) {
+                        Log.Error("Incompatible API level: {0}", dllFile.FullName);
+                        return false;
+                    }
+
+                    Log.Verbose("Plugin Initialize...");
 
                     var dalamudInterface = new DalamudPluginInterface(this.dalamud, type.Assembly.GetName().Name, this.pluginConfigs, reason);
                     plugin.Initialize(dalamudInterface);
 
                     Log.Information("Loaded plugin: {0}", plugin.Name);
-                    this.Plugins.Add((plugin, pluginDef, dalamudInterface, raw));
+                    this.Plugins.Add((plugin, pluginDef, dalamudInterface, isRaw));
 
                     return true;
                 }
@@ -215,41 +274,6 @@ namespace Dalamud.Plugin
             Log.Information("Plugin DLL {0} has no plugin interface.", dllFile.FullName);
 
             return false;
-        }
-
-        private void LoadPluginsAt(DirectoryInfo folder, bool raw) {
-            if (folder.Exists)
-            { 
-                Log.Information("Loading plugins at {0}", folder);
-                var pluginDlls = folder.GetFiles("*.dll", SearchOption.AllDirectories);
-                
-                // Preload definitions to be able to determine load order
-                var pluginDefs = new List<(FileInfo dllFile, PluginDefinition definition)>();
-                foreach (var dllFile in pluginDlls) {
-                    var defJson = new FileInfo(Path.Combine(dllFile.Directory.FullName, $"{Path.GetFileNameWithoutExtension(dllFile.Name)}.json"));
-                    PluginDefinition def = null;
-                    if (defJson.Exists)
-                        def = JsonConvert.DeserializeObject<PluginDefinition>(File.ReadAllText(defJson.FullName));
-                    pluginDefs.Add((dllFile, def));
-                }
-                
-                // Sort for load order - unloaded definitions have default priority of 0
-                pluginDefs.Sort(
-                (info1, info2) => {
-                    var prio1 = info1.definition?.LoadPriority ?? 0;
-                    var prio2 = info2.definition?.LoadPriority ?? 0;
-                    return prio2.CompareTo(prio1);
-                });
-
-                // Pass preloaded definitions to LoadPluginFromAssembly, because we already loaded them anyways
-                foreach (var infos in pluginDefs) {
-                    try {
-                        LoadPluginFromAssembly(infos.dllFile, raw, PluginLoadReason.Boot, true, infos.definition);
-                    } catch (Exception ex) {
-                        Log.Error(ex, $"Plugin load for {infos.dllFile.FullName} failed.");
-                    }
-                }
-            }
         }
 
         public void ReloadPlugins() {

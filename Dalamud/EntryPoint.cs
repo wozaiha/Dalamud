@@ -55,7 +55,11 @@ namespace Dalamud {
         }
 
         private (Logger logger, LoggingLevelSwitch levelSwitch) NewLogger(string baseDirectory) {
-            var logPath = Path.Combine(baseDirectory, "dalamud.txt");
+#if DEBUG
+            var logPath = Path.Combine(baseDirectory, "dalamud.log");
+#else
+            var logPath = Path.Combine(baseDirectory, "..", "..", "..", "dalamud.log");
+#endif
 
             var levelSwitch = new LoggingLevelSwitch();
 
@@ -66,7 +70,7 @@ namespace Dalamud {
 #endif
 
             var newLogger =  new LoggerConfiguration()
-                   .WriteTo.Async(a => a.File(logPath, outputTemplate: "{Timestamp:HH:mm:ss.fff}[{Level:u3}] {Message:lj}{NewLine}{Exception}"))
+                   .WriteTo.Async(a => a.File(logPath))
                    .WriteTo.EventSink()
                    .MinimumLevel.ControlledBy(levelSwitch)
                    .CreateLogger();

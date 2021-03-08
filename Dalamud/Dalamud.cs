@@ -198,19 +198,31 @@ namespace Dalamud {
                 TargetModule = Process.GetCurrentProcess().MainModule;
                 SigScanner = new SigScanner(TargetModule, true);
 
+                Log.Verbose("[START] Scanner OK!");
+
                 AntiDebug = new AntiDebug(SigScanner);
 #if DEBUG
                 AntiDebug.Enable();
 #endif
 
+                Log.Verbose("[START] AntiDebug OK!");
+
                 // Initialize game subsystem
                 Framework = new Framework(SigScanner, this);
 
+                Log.Verbose("[START] Framework OK!");
+
                 WinSock2 = new WinSockHandlers();
+
+                Log.Verbose("[START] WinSock OK!");
 
                 NetworkHandlers = new NetworkHandlers(this, StartInfo.OptOutMbCollection);
 
+                Log.Verbose("[START] NH OK!");
+
                 ClientState = new ClientState(this, StartInfo, SigScanner);
+
+                Log.Verbose("[START] CS OK!");
 
                 LocalizationManager = new Localization(AssetDirectory.FullName);
                 if (!string.IsNullOrEmpty(Configuration.LanguageOverride))
@@ -218,9 +230,15 @@ namespace Dalamud {
                 else
                     LocalizationManager.SetupWithUiCulture();
 
+                Log.Verbose("[START] LOC OK!");
+
                 PluginRepository = new PluginRepository(this, StartInfo.PluginDirectory, StartInfo.GameVersion);
 
+                Log.Verbose("[START] PREPO OK!");
+
                 DalamudUi = new DalamudInterface(this);
+
+                Log.Verbose("[START] DUI OK!");
 
                 var isInterfaceLoaded = false;
                 if (!bool.Parse(Environment.GetEnvironmentVariable("DALAMUD_NOT_HAVE_INTERFACE") ?? "false")) {
@@ -230,6 +248,8 @@ namespace Dalamud {
 
                         InterfaceManager.Enable();
                         isInterfaceLoaded = true;
+
+                        Log.Verbose("[START] IM OK!");
 
                         InterfaceManager.WaitForFontRebuild();
                     } catch (Exception e) {
@@ -246,29 +266,44 @@ namespace Dalamud {
                     return;
                 }
 
+                Log.Verbose("[START] Data OK!");
+
                 SeStringManager = new SeStringManager(Data);
+
+                Log.Verbose("[START] SeString OK!");
 
                 // Initialize managers. Basically handlers for the logic
                 CommandManager = new CommandManager(this, StartInfo.Language);
                 DalamudCommands = new DalamudCommands(this);
                 DalamudCommands.SetupCommands();
 
+                Log.Verbose("[START] CM OK!");
+
                 ChatHandlers = new ChatHandlers(this);
+
+                Log.Verbose("[START] CH OK!");
 
                 if (!bool.Parse(Environment.GetEnvironmentVariable("DALAMUD_NOT_HAVE_PLUGINS") ?? "false")) {
                     try {
                         PluginRepository.CleanupPlugins();
 
+                        Log.Verbose("[START] PRC OK!");
+
                         PluginManager =
                             new PluginManager(this, StartInfo.PluginDirectory, StartInfo.DefaultPluginDirectory);
                         PluginManager.LoadPlugins();
+
+                        Log.Verbose("[START] PM OK!");
                     } catch (Exception ex) {
                         Log.Error(ex, "Plugin load failed.");
                     }
                 }
 
                 Framework.Enable();
+                Log.Verbose("[START] Framework ENABLE!");
+
                 ClientState.Enable();
+                Log.Verbose("[START] CS ENABLE!");
 
                 IsReady = true;
 
@@ -276,7 +311,7 @@ namespace Dalamud {
 
                 Log.Information("Dalamud is ready.");
             } catch (Exception ex) {
-                Log.Error(ex, "Oh no! Dalamud::Start() failed.");
+                Log.Error(ex, "Dalamud::Start() failed.");
                 Unload();
             }
         }
@@ -321,9 +356,9 @@ namespace Dalamud {
 
                 AntiDebug.Dispose();
 
-                Log.Debug("Dalamud::Dispose OK!");
+                Log.Debug("Dalamud::Dispose() OK!");
             } catch (Exception ex) {
-                Log.Error(ex, "skjdgjjkodsfg");
+                Log.Error(ex, "Dalamud::Dispose() failed.");
             }
         }
 

@@ -22,6 +22,8 @@ namespace Dalamud.Interface
     {
         private readonly Dalamud dalamud;
 
+        private ulong frameCount = 0;
+
         public DalamudInterface(Dalamud dalamud) {
             this.dalamud = dalamud;
         }
@@ -58,6 +60,8 @@ namespace Dalamud.Interface
 
         public void Draw()
         {
+            this.frameCount++;
+
             if (!this.IsDevMenu && !this.dalamud.ClientState.Condition.Any())
             {
                 ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0, 0, 0, 0));
@@ -242,6 +246,8 @@ namespace Dalamud.Interface
 
                     if (this.dalamud.Framework.Gui.GameUiHidden)
                         ImGui.BeginMenu("UI is hidden...", false);
+
+                    ImGui.BeginMenu(this.frameCount.ToString(), false);
 
                     ImGui.EndMainMenuBar();
                 }
