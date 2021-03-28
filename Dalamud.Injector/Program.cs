@@ -167,13 +167,13 @@ namespace Dalamud.Injector {
             var ffxivDir = Path.GetDirectoryName(process.MainModule.FileName);
             var startInfo = new DalamudStartInfo {
                 WorkingDirectory = null,
-                ConfigurationPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "XIVLauncher", "dalamudConfig.json"),
-                PluginDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "XIVLauncher", "installedPlugins"),
-                DefaultPluginDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "XIVLauncher", "devPlugins"),
-                AssetDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "XIVLauncher", "dalamudAssets"),
+                ConfigurationPath = Path.Combine(Directory.GetCurrentDirectory(), "XIVLauncher", "dalamudConfig.json"),
+                PluginDirectory = Path.Combine(Directory.GetCurrentDirectory(), "XIVLauncher", "installedPlugins"),
+                DefaultPluginDirectory = Path.Combine(Directory.GetCurrentDirectory(), "XIVLauncher", "devPlugins"),
+                AssetDirectory = Path.Combine(Directory.GetCurrentDirectory(), "XIVLauncher", "dalamudAssets"),
 
                 GameVersion = File.ReadAllText(Path.Combine(ffxivDir, "ffxivgame.ver")),
-                Language = ClientLanguage.English
+                Language = ClientLanguage.ChineseSimplified
             };
 
             Console.WriteLine("Creating a StartInfo with:\n" +
