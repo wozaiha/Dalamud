@@ -14,10 +14,10 @@
     </PropertyGroup>
     <PropertyGroup Label="Feature">
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <AssemblyVersion>5.2.3.3</AssemblyVersion>
-        <FileVersion>5.2.3.3</FileVersion>
+        <AssemblyVersion>5.2.4.2</AssemblyVersion>
+        <FileVersion>5.2.4.2</FileVersion>
         <Description>XIVLauncher addon injection</Description>
-        <Version>5.2.3.3</Version>
+        <Version>5.2.4.2</Version>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
         <DocumentationFile></DocumentationFile>
@@ -44,4 +44,7 @@
     <ItemGroup>
         <Reference Include="System.Windows.Forms" />
     </ItemGroup>
+    <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(Configuration)'=='Release'">
+      <Exec Command="powershell -ExecutionPolicy Unrestricted $(SolutionDir)CreateHashList.ps1 $(OutputPath)" />
+    </Target>
 </Project>

@@ -1,16 +1,11 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
+
 using CheapLoc;
-using Dalamud.Game.ClientState;
-using Dalamud.Game.Command;
-using Dalamud.Game.Internal;
 using Dalamud.Plugin;
 using ImGuiNET;
 using Serilog;
@@ -18,15 +13,14 @@ using Serilog.Events;
 
 namespace Dalamud.Interface
 {
+    /// <summary>
+    /// Class handling Dalamud core interface.
+    /// </summary>
     internal class DalamudInterface
     {
         private readonly Dalamud dalamud;
 
         private ulong frameCount = 0;
-
-        public DalamudInterface(Dalamud dalamud) {
-            this.dalamud = dalamud;
-        }
 
         private bool isImguiDrawDemoWindow = false;
 
@@ -35,12 +29,6 @@ namespace Dalamud.Interface
 #else
         private bool isImguiDrawDevMenu = false;
 #endif
-
-        public bool IsDevMenu
-        {
-            get => this.isImguiDrawDevMenu;
-            set => this.isImguiDrawDevMenu = value;
-        }
 
         private bool isImguiDrawLogWindow = false;
         private bool isImguiDrawDataWindow = false;
@@ -58,6 +46,29 @@ namespace Dalamud.Interface
         private DalamudPluginStatWindow pluginStatWindow;
         private DalamudChangelogWindow changelogWindow;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DalamudInterface"/> class.
+        /// </summary>
+        /// <param name="dalamud">The Dalamud instance to register to.</param>
+        public DalamudInterface(Dalamud dalamud)
+        {
+            this.dalamud = dalamud;
+            if (dalamud.Configuration.LogOpenAtStartup)
+                this.OpenLog();
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the Dalamud dev menu is drawing.
+        /// </summary>
+        public bool IsDevMenu
+        {
+            get => this.isImguiDrawDevMenu;
+            set => this.isImguiDrawDevMenu = value;
+        }
+
+        /// <summary>
+        /// Draw the Dalamud core interface via ImGui.
+        /// </summary>
         public void Draw()
         {
             this.frameCount++;
@@ -73,7 +84,8 @@ namespace Dalamud.Interface
                 ImGui.PushStyleColor(ImGuiCol.BorderShadow, new Vector4(0, 0, 0, 1));
                 ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0, 0, 0, 1));
 
-                ImGui.SetNextWindowPos(new Vector2(0, 0), ImGuiCond.Always);
+                var mainViewportPos = ImGui.GetMainViewport().Pos;
+                ImGui.SetNextWindowPos(new Vector2(mainViewportPos.X, mainViewportPos.Y), ImGuiCond.Always);
                 ImGui.SetNextWindowBgAlpha(1);
 
                 if (ImGui.Begin("DevMenu Opener", ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoSavedSettings))
@@ -93,18 +105,21 @@ namespace Dalamud.Interface
                 {
                     if (ImGui.BeginMenu("Dalamud"))
                     {
-                        ImGui.MenuItem("Draw Dalamud dev menu", "", ref this.isImguiDrawDevMenu);
+                        ImGui.MenuItem("Draw Dalamud dev menu", string.Empty, ref this.isImguiDrawDevMenu);
+
                         ImGui.Separator();
+
                         if (ImGui.MenuItem("Open Log window"))
                         {
-                            this.logWindow = new DalamudLogWindow(this.dalamud.CommandManager);
+                            this.logWindow = new DalamudLogWindow(this.dalamud.CommandManager, this.dalamud.Configuration);
                             this.isImguiDrawLogWindow = true;
                         }
+
                         if (ImGui.BeginMenu("Set log level..."))
                         {
                             foreach (var logLevel in Enum.GetValues(typeof(LogEventLevel)).Cast<LogEventLevel>())
                             {
-                                if (ImGui.MenuItem(logLevel + "##logLevelSwitch", "", this.dalamud.LogLevelSwitch.MinimumLevel == logLevel))
+                                if (ImGui.MenuItem(logLevel + "##logLevelSwitch", string.Empty, this.dalamud.LogLevelSwitch.MinimumLevel == logLevel))
                                 {
                                     this.dalamud.LogLevelSwitch.MinimumLevel = logLevel;
                                 }
@@ -112,47 +127,61 @@ namespace Dalamud.Interface
 
                             ImGui.EndMenu();
                         }
+
                         if (ImGui.MenuItem("Enable AntiDebug", null, this.dalamud.AntiDebug.IsEnabled))
                         {
                             this.dalamud.AntiDebug.Enable();
                         }
+
                         ImGui.Separator();
+
                         if (ImGui.MenuItem("Open Data window"))
                         {
                             this.dataWindow = new DalamudDataWindow(this.dalamud);
                             this.isImguiDrawDataWindow = true;
                         }
+
                         if (ImGui.MenuItem("Open Credits window"))
                         {
-                            OpenCredits();
+                            this.OpenCredits();
                         }
+
                         if (ImGui.MenuItem("Open Settings window"))
                         {
-                            OpenSettings();
+                            this.OpenSettings();
                         }
+
                         if (ImGui.MenuItem("Open Changelog window"))
                         {
-                            OpenChangelog();
+                            this.OpenChangelog();
                         }
-                        ImGui.MenuItem("Draw ImGui demo", "", ref this.isImguiDrawDemoWindow);
+
+                        ImGui.MenuItem("Draw ImGui demo", string.Empty, ref this.isImguiDrawDemoWindow);
+
                         ImGui.Separator();
+
                         if (ImGui.MenuItem("Unload Dalamud"))
                         {
                             this.dalamud.Unload();
                         }
+
                         if (ImGui.MenuItem("Kill game"))
                         {
                             Process.GetCurrentProcess().Kill();
                         }
+
                         if (ImGui.MenuItem("Cause AccessViolation"))
                         {
                             var a = Marshal.ReadByte(IntPtr.Zero);
                         }
+
                         ImGui.Separator();
-                        if (ImGui.MenuItem("Enable Dalamud testing", "", this.dalamud.Configuration.DoDalamudTest)) {
+                        if (ImGui.MenuItem("Enable Dalamud testing", string.Empty, this.dalamud.Configuration.DoDalamudTest))
+                        {
                             this.dalamud.Configuration.DoDalamudTest = !this.dalamud.Configuration.DoDalamudTest;
                             this.dalamud.Configuration.Save();
                         }
+
                         ImGui.MenuItem(Util.AssemblyVersion, false);
                         ImGui.MenuItem(this.dalamud.StartInfo.GameVersion, false);
 
@@ -176,7 +205,9 @@ namespace Dalamud.Interface
                             this.pluginWindow = new PluginInstallerWindow(this.dalamud, this.dalamud.StartInfo.GameVersion);
                             this.isImguiDrawPluginWindow = true;
                         }
+
                         ImGui.Separator();
+
                         if (ImGui.MenuItem("Open Plugin Stats"))
                         {
                             if (!this.isImguiDrawPluginStatWindow)
@@ -185,6 +216,7 @@ namespace Dalamud.Interface
                                 this.isImguiDrawPluginStatWindow = true;
                             }
                         }
+
                         if (ImGui.MenuItem("Print plugin info"))
                         {
                             foreach (var plugin in this.dalamud.PluginManager.Plugins)
@@ -193,6 +225,7 @@ namespace Dalamud.Interface
                                 Log.Information($"{plugin.Plugin.Name}");
                             }
                         }
+
                         if (ImGui.MenuItem("Reload plugins"))
                         {
                             try
@@ -207,7 +240,7 @@ namespace Dalamud.Interface
                         }
 
                         ImGui.Separator();
-                        ImGui.MenuItem("API Level:" + PluginManager.DALAMUD_API_LEVEL, false);
+                        ImGui.MenuItem("API Level:" + PluginManager.DalamudApiLevel, false);
                         ImGui.MenuItem("Loaded plugins:" + this.dalamud.PluginManager?.Plugins.Count, false);
                         ImGui.EndMenu();
                     }
@@ -223,7 +256,7 @@ namespace Dalamud.Interface
                         {
                             if (ImGui.MenuItem("From Fallbacks"))
                             {
-                                Loc.SetupWithFallbacks();
+                                this.dalamud.LocalizationManager.SetupWithFallbacks();
                             }
 
                             if (ImGui.MenuItem("From UICulture"))
@@ -241,6 +274,7 @@ namespace Dalamud.Interface
 
                             ImGui.EndMenu();
                         }
+
                         ImGui.EndMenu();
                     }
 
@@ -248,6 +282,7 @@ namespace Dalamud.Interface
                         ImGui.BeginMenu("UI is hidden...", false);
 
                     ImGui.BeginMenu(this.frameCount.ToString(), false);
+                    ImGui.BeginMenu(ImGui.GetIO().Framerate.ToString("F2"), false);
 
                     ImGui.EndMainMenuBar();
                 }
@@ -314,33 +349,48 @@ namespace Dalamud.Interface
                 this.isImguiDrawChangelogWindow = this.changelogWindow != null && this.changelogWindow.Draw();
             }
         }
+
+        /// <summary>
+        /// Open the Plugin Installer window.
+        /// </summary>
         internal void OpenPluginInstaller()
         {
-            if (this.pluginWindow == null)
-            {
-                this.pluginWindow = new PluginInstallerWindow(this.dalamud, this.dalamud.StartInfo.GameVersion);
-            }
+            this.pluginWindow ??= new PluginInstallerWindow(this.dalamud, this.dalamud.StartInfo.GameVersion);
             this.isImguiDrawPluginWindow ^= true;
         }
 
+        /// <summary>
+        /// Open the changelog window.
+        /// </summary>
         internal void OpenChangelog()
         {
             this.changelogWindow = new DalamudChangelogWindow(this.dalamud);
             this.isImguiDrawChangelogWindow = true;
         }
 
+        /// <summary>
+        /// Open the settings window.
+        /// </summary>
         internal void OpenSettings()
         {
             this.settingsWindow = new DalamudSettingsWindow(this.dalamud);
             this.isImguiDrawSettingsWindow ^= true;
         }
 
-        public void OpenLog() {
-            this.logWindow = new DalamudLogWindow(this.dalamud.CommandManager);
+        /// <summary>
+        /// Open the log window.
+        /// </summary>
+        internal void OpenLog()
+        {
+            this.logWindow = new DalamudLogWindow(this.dalamud.CommandManager, this.dalamud.Configuration);
             this.isImguiDrawLogWindow = true;
         }
 
-        public void OpenCredits() {
+        /// <summary>
+        /// Open the credits window.
+        /// </summary>
+        internal void OpenCredits()
+        {
             var logoGraphic =
                 this.dalamud.InterfaceManager.LoadImage(
                     Path.Combine(this.dalamud.AssetDirectory.FullName, "UIRes", "logo.png"));

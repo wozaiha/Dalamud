@@ -1,7 +1,8 @@
 using System;
 using System.Runtime.InteropServices;
-using Dalamud.Game.Chat.SeStringHandling.Payloads;
+using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Hooking;
+using ImGuiNET;
 using Serilog;
 using SharpDX;
 
@@ -10,6 +11,7 @@ namespace Dalamud.Game.Internal.Gui {
         private GameGuiAddressResolver Address { get; }
         
         public ChatGui Chat { get; private set; }
+        public PartyFinderGui PartyFinder { get; private set; }
 
         [UnmanagedFunctionPointer(CallingConvention.ThisCall)]
         private delegate IntPtr SetGlobalBgmDelegate(UInt16 bgmKey, byte a2, UInt32 a3, UInt32 a4, UInt32 a5, byte a6);
@@ -106,6 +108,7 @@ namespace Dalamud.Game.Internal.Gui {
             Log.Verbose("GetUIObject address {Address}", Address.GetUIObject);
 
             Chat = new ChatGui(Address.ChatManager, scanner, dalamud);
+            PartyFinder = new PartyFinderGui(scanner, dalamud);
 
             this.setGlobalBgmHook =
                 new Hook<SetGlobalBgmDelegate>(Address.SetGlobalBgm,
@@ -287,6 +290,8 @@ namespace Dalamud.Game.Internal.Gui {
             // Read current ViewProjectionMatrix plus game window size
             var viewProjectionMatrix = new Matrix();
             float width, height;
+            var windowPos = ImGui.GetMainViewport().Pos;
+
             unsafe {
                 var rawMatrix = (float*) (matrixSingleton + 0x1b4).ToPointer();
 
@@ -301,10 +306,12 @@ namespace Dalamud.Game.Internal.Gui {
 
             screenPos = new Vector2(pCoords.X / pCoords.Z, pCoords.Y / pCoords.Z);
 
-            screenPos.X = 0.5f * width * (screenPos.X + 1f);
-            screenPos.Y = 0.5f * height * (1f - screenPos.Y);
+            screenPos.X = 0.5f * width * (screenPos.X + 1f) + windowPos.X;
+            screenPos.Y = 0.5f * height * (1f - screenPos.Y) + windowPos.Y;
 
-            return pCoords.Z > 0;
+            return pCoords.Z > 0 &&
+                   screenPos.X > windowPos.X && screenPos.X < windowPos.X + width &&
+                   screenPos.Y > windowPos.Y && screenPos.Y < windowPos.Y + height;
         }
 
         /// <summary>
@@ -316,6 +323,18 @@ namespace Dalamud.Game.Internal.Gui {
         /// <returns>True if successful. On false, worldPos's contents are undefined</returns>
         public bool ScreenToWorld(Vector2 screenPos, out Vector3 worldPos, float rayDistance = 100000.0f)
         {
+            // The game is only visible in the main viewport, so if the cursor is outside
+            // of the game window, do not bother calculating anything
+            var windowPos = ImGui.GetMainViewport().Pos;
+            var windowSize = ImGui.GetMainViewport().Size;
+
+            if (screenPos.X < windowPos.X || screenPos.X > windowPos.X + windowSize.X ||
+                screenPos.Y < windowPos.Y || screenPos.Y > windowPos.Y + windowSize.Y)
+            {
+                worldPos = new Vector3();
+                return false;
+            }
+
             // Get base object with matrices
             var matrixSingleton = this.getMatrixSingleton();
 
@@ -335,9 +354,10 @@ namespace Dalamud.Game.Internal.Gui {
 
             viewProjectionMatrix.Invert();
 
+            var localScreenPos = new Vector2(screenPos.X - windowPos.X, screenPos.Y - windowPos.Y);
             var screenPos3D = new Vector3 {
-                X = screenPos.X / width * 2.0f - 1.0f,
-                Y = -(screenPos.Y / height * 2.0f - 1.0f),
+                X = localScreenPos.X / width * 2.0f - 1.0f,
+                Y = -(localScreenPos.Y / height * 2.0f - 1.0f),
                 Z = 0
             };
 
@@ -415,6 +435,7 @@ namespace Dalamud.Game.Internal.Gui {
 
         public void Enable() {
             Chat.Enable();
+            PartyFinder.Enable();
             this.setGlobalBgmHook.Enable();
             this.handleItemHoverHook.Enable();
             this.handleItemOutHook.Enable();
@@ -425,6 +446,7 @@ namespace Dalamud.Game.Internal.Gui {
 
         public void Dispose() {
             Chat.Dispose();
+            PartyFinder.Dispose();
             this.setGlobalBgmHook.Dispose();
             this.handleItemHoverHook.Dispose();
             this.handleItemOutHook.Dispose();

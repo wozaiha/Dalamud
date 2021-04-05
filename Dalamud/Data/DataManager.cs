@@ -3,64 +3,72 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
-using System.Net;
-using System.Net.Http;
 using System.Threading;
-using System.Threading.Tasks;
-using Dalamud.Data.LuminaExtensions;
+
+using Lumina;
 using Lumina.Data;
 using Lumina.Data.Files;
 using Lumina.Excel;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Serilog;
-using LuminaOptions = Lumina.LuminaOptions;
-using ParsedFilePath = Lumina.ParsedFilePath;
 
 namespace Dalamud.Data
 {
     /// <summary>
     /// This class provides data for Dalamud-internal features, but can also be used by plugins if needed.
     /// </summary>
-    public class DataManager : IDisposable {
+    public class DataManager : IDisposable
+    {
         /// <summary>
-        /// OpCodes sent by the server to the client.
+        /// The current game client language.
         /// </summary>
-        public ReadOnlyDictionary<string, ushort> ServerOpCodes { get; private set; }
-        /// <summary>
-        /// OpCodes sent by the client to the server.
-        /// </summary>
-        public ReadOnlyDictionary<string, ushort> ClientOpCodes { get; private set; }
+        internal ClientLanguage Language;
 
-        /// <summary>
-        /// An <see cref="ExcelModule"/> object which gives access to any of the game's sheet data.
-        /// </summary>
-        public ExcelModule Excel => this.gameData?.Excel;
-
-        /// <summary>
-        /// Indicates whether Game Data is ready to be read.
-        /// </summary>
-        public bool IsDataReady { get; private set; }
+        private const string IconFileFormat = "ui/icon/{0:D3}000/{1}{2:D6}.tex";
 
         /// <summary>
         /// A <see cref="Lumina"/> object which gives access to any excel/game data.
         /// </summary>
-        private Lumina.Lumina gameData;
-
-        private ClientLanguage language;
-
-        private const string IconFileFormat = "ui/icon/{0:D3}000/{1}{2:D6}.tex";
+        private Lumina.GameData gameData;
 
         private Thread luminaResourceThread;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DataManager"/> class.
+        /// </summary>
+        /// <param name="language">The language to load data with by default.</param>
         public DataManager(ClientLanguage language)
         {
             // Set up default values so plugins do not null-reference when data is being loaded.
             this.ServerOpCodes = new ReadOnlyDictionary<string, ushort>(new Dictionary<string, ushort>());
 
-            this.language = language;
+            this.Language = language;
         }
 
+        /// <summary>
+        /// Gets the OpCodes sent by the server to the client.
+        /// </summary>
+        public ReadOnlyDictionary<string, ushort> ServerOpCodes { get; private set; }
+
+        /// <summary>
+        /// Gets the OpCodes sent by the client to the server.
+        /// </summary>
+        public ReadOnlyDictionary<string, ushort> ClientOpCodes { get; private set; }
+
+        /// <summary>
+        /// Gets an <see cref="ExcelModule"/> object which gives access to any of the game's sheet data.
+        /// </summary>
+        public ExcelModule Excel => this.gameData?.Excel;
+
+        /// <summary>
+        /// Gets a value indicating whether Game Data is ready to be read.
+        /// </summary>
+        public bool IsDataReady { get; private set; }
+
+        /// <summary>
+        /// Initialize this data manager.
+        /// </summary>
+        /// <param name="baseDir">The directory to load data from.</param>
         public void Initialize(string baseDir)
         {
             try
@@ -69,18 +77,18 @@ namespace Dalamud.Data
 
                 var zoneOpCodeDict =
                     JsonConvert.DeserializeObject<Dictionary<string, ushort>>(File.ReadAllText(Path.Combine(baseDir, "UIRes", "serveropcode.json")));
-                ServerOpCodes = new ReadOnlyDictionary<string, ushort>(zoneOpCodeDict);
+                this.ServerOpCodes = new ReadOnlyDictionary<string, ushort>(zoneOpCodeDict);
 
                 Log.Verbose("Loaded {0} ServerOpCodes.", zoneOpCodeDict.Count);
 
                 var clientOpCodeDict =
                     JsonConvert.DeserializeObject<Dictionary<string, ushort>>(File.ReadAllText(Path.Combine(baseDir, "UIRes", "clientopcode.json")));
-                ClientOpCodes = new ReadOnlyDictionary<string, ushort>(clientOpCodeDict);
+                this.ClientOpCodes = new ReadOnlyDictionary<string, ushort>(clientOpCodeDict);
 
                 Log.Verbose("Loaded {0} ClientOpCodes.", clientOpCodeDict.Count);
 
-
-                var luminaOptions = new LuminaOptions {
+                var luminaOptions = new LuminaOptions
+                {
                     CacheFileResources = true,
 
 #if DEBUG
@@ -89,36 +97,38 @@ namespace Dalamud.Data
                     PanicOnSheetChecksumMismatch = false,
 #endif
 
-                    DefaultExcelLanguage = this.language switch {
-                        ClientLanguage.Japanese => Language.Japanese,
-                        ClientLanguage.English => Language.English,
-                        ClientLanguage.German => Language.German,
-                        ClientLanguage.French => Language.French,
-                        ClientLanguage.ChineseSimplified => Language.ChineseSimplified,
-                        _ => throw new ArgumentOutOfRangeException(nameof(this.language),
-                                                                   "Unknown Language: " + this.language)
-                    }
+                    DefaultExcelLanguage = this.Language switch {
+                        ClientLanguage.Japanese => Lumina.Data.Language.Japanese,
+                        ClientLanguage.English => Lumina.Data.Language.English,
+                        ClientLanguage.German => Lumina.Data.Language.German,
+                        ClientLanguage.French => Lumina.Data.Language.French,
+                        ClientLanguage.ChineseSimplified => Lumina.Data.Language.ChineseSimplified,
+                        _ => throw new ArgumentOutOfRangeException(
+                                 nameof(this.Language),
+                                 "Unknown Language: " + this.Language),
+                    },
                 };
 
-                this.gameData = new Lumina.Lumina(Path.Combine(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName), "sqpack"), luminaOptions);
+                this.gameData = new GameData(Path.Combine(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName), "sqpack"), luminaOptions);
 
-                Log.Information("Lumina is ready: {0}", gameData.DataPath);
+                Log.Information("Lumina is ready: {0}", this.gameData.DataPath);
 
-                IsDataReady = true;
-                
-                this.luminaResourceThread = new Thread( () =>
+                this.IsDataReady = true;
+
+                this.luminaResourceThread = new Thread(() =>
                 {
                     while (true)
                     {
-                        if (gameData.FileHandleManager.HasPendingFileLoads)
+                        if (this.gameData.FileHandleManager.HasPendingFileLoads)
                         {
-                            gameData.ProcessFileHandleQueue();
+                            this.gameData.ProcessFileHandleQueue();
                         }
                         else
                         {
                             Thread.Sleep(5);
                         }
                     }
+
                     // ReSharper disable once FunctionNeverReturns
                 });
                 this.luminaResourceThread.Start();
@@ -136,7 +146,7 @@ namespace Dalamud.Data
         /// </summary>
         /// <typeparam name="T">The excel sheet type to get.</typeparam>
         /// <returns>The <see cref="ExcelSheet{T}"/>, giving access to game rows.</returns>
-        public ExcelSheet<T> GetExcelSheet<T>() where T : class, IExcelRow
+        public ExcelSheet<T> GetExcelSheet<T>() where T : ExcelRow
         {
             return this.Excel.GetSheet<T>();
         }
@@ -147,14 +157,15 @@ namespace Dalamud.Data
         /// <param name="language">Language of the sheet to get.</param>
         /// <typeparam name="T">The excel sheet type to get.</typeparam>
         /// <returns>The <see cref="ExcelSheet{T}"/>, giving access to game rows.</returns>
-        public ExcelSheet<T> GetExcelSheet<T>(ClientLanguage language) where T : class, IExcelRow {
+        public ExcelSheet<T> GetExcelSheet<T>(ClientLanguage language) where T : ExcelRow
+        {
             var lang = language switch {
-                ClientLanguage.Japanese => Language.Japanese,
-                ClientLanguage.English => Language.English,
-                ClientLanguage.German => Language.German,
-                ClientLanguage.French => Language.French,
-                ClientLanguage.ChineseSimplified => Language.ChineseSimplified,
-                _ => throw new ArgumentOutOfRangeException(nameof(this.language), "Unknown Language: " + this.language)
+                ClientLanguage.Japanese => Lumina.Data.Language.Japanese,
+                ClientLanguage.English => Lumina.Data.Language.English,
+                ClientLanguage.German => Lumina.Data.Language.German,
+                ClientLanguage.French => Lumina.Data.Language.French,
+                ClientLanguage.ChineseSimplified => Lumina.Data.Language.ChineseSimplified,
+                _ => throw new ArgumentOutOfRangeException(nameof(this.Language), "Unknown Language: " + this.Language)
             };
             return this.Excel.GetSheet<T>(lang);
         }
@@ -172,12 +183,12 @@ namespace Dalamud.Data
         /// <summary>
         /// Get a <see cref="FileResource"/> with the given path, of the given type.
         /// </summary>
-        /// <typeparam name="T">The type of resource</typeparam>
+        /// <typeparam name="T">The type of resource.</typeparam>
         /// <param name="path">The path inside of the game files.</param>
         /// <returns>The <see cref="FileResource"/> of the file.</returns>
         public T GetFile<T>(string path) where T : FileResource
         {
-            ParsedFilePath filePath = Lumina.Lumina.ParseFilePath(path);
+            ParsedFilePath filePath = GameData.ParseFilePath(path);
             if (filePath == null)
                 return default(T);
             Repository repository;
@@ -201,7 +212,7 @@ namespace Dalamud.Data
         /// <returns>The <see cref="TexFile"/> containing the icon.</returns>
         public TexFile GetIcon(int iconId)
         {
-            return GetIcon(this.language, iconId);
+            return this.GetIcon(this.Language, iconId);
         }
 
         /// <summary>
@@ -218,11 +229,10 @@ namespace Dalamud.Data
                 ClientLanguage.German => "de/",
                 ClientLanguage.French => "fr/",
                 ClientLanguage.ChineseSimplified => "chs/",
-                _ => throw new ArgumentOutOfRangeException(nameof(this.language),
-                                                           "Unknown Language: " + this.language)
+                _ => throw new ArgumentOutOfRangeException(nameof(this.Language), "Unknown Language: " + this.Language)
             };
 
-            return GetIcon(type, iconId);
+            return this.GetIcon(type, iconId);
         }
 
         /// <summary>
@@ -250,6 +260,9 @@ namespace Dalamud.Data
 
         #endregion
 
+        /// <summary>
+        /// Dispose this DataManager.
+        /// </summary>
         public void Dispose()
         {
             this.luminaResourceThread.Abort();

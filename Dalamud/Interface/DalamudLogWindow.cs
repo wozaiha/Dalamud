@@ -4,6 +4,8 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
+
+using Dalamud.Configuration;
 using Dalamud.Game.Command;
 using ImGuiNET;
 using Serilog;
@@ -13,15 +15,20 @@ namespace Dalamud.Interface
 {
     class DalamudLogWindow : IDisposable {
         private readonly CommandManager commandManager;
-        private bool autoScroll = true;
+        private readonly DalamudConfiguration configuration;
+        private bool autoScroll;
+        private bool openAtStartup;
         private readonly List<(string line, Vector4 color)> logText = new List<(string line, Vector4 color)>();
         
         private readonly object renderLock = new object();
 
         private string commandText = string.Empty;
 
-        public DalamudLogWindow(CommandManager commandManager) {
+        public DalamudLogWindow(CommandManager commandManager, DalamudConfiguration configuration) {
             this.commandManager = commandManager;
+            this.configuration = configuration;
+            this.autoScroll = configuration.LogAutoScroll;
+            this.openAtStartup = configuration.LogOpenAtStartup;
             SerilogEventSink.Instance.OnLogLine += Serilog_OnLogLine;
         }
 
@@ -71,7 +78,14 @@ namespace Dalamud.Interface
             // Options menu
             if (ImGui.BeginPopup("Options"))
             {
-                ImGui.Checkbox("Auto-scroll", ref this.autoScroll);
+                if (ImGui.Checkbox("Auto-scroll", ref this.autoScroll)) {
+                    this.configuration.LogAutoScroll = this.autoScroll;
+                    this.configuration.Save();
+                };
+                if (ImGui.Checkbox("Open at startup", ref this.openAtStartup)) {
+                    this.configuration.LogOpenAtStartup = this.openAtStartup;
+                    this.configuration.Save();
+                };
                 ImGui.EndPopup();
             }
 

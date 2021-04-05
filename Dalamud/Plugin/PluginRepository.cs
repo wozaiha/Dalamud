@@ -11,7 +11,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using CheapLoc;
-using Dalamud.Game.Chat;
+using Dalamud.Game.Text;
 using Newtonsoft.Json;
 using Serilog;
 
@@ -238,7 +238,7 @@ namespace Dalamud.Plugin
                             continue;
                         }
 
-                        if (remoteInfo.DalamudApiLevel < PluginManager.DALAMUD_API_LEVEL) {
+                        if (remoteInfo.DalamudApiLevel < PluginManager.DalamudApiLevel) {
                             Log.Information("Has not applicable API level: {0}", info.Name);
                             continue;
                         }
