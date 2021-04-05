@@ -1,8 +1,8 @@
+using Ionic.Zip;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -89,7 +89,14 @@ namespace Dalamud.Updater
                 }
 
                 Console.WriteLine($"Extracting {fileName} to {Directory.GetCurrentDirectory()}");
-                ZipFile.ExtractToDirectory(zipPath, Directory.GetCurrentDirectory());
+                using (ZipFile zip = ZipFile.Read(zipPath))
+                {
+                    foreach (ZipEntry e in zip)
+                    {
+                        e.Extract(Directory.GetCurrentDirectory(), ExtractExistingFileAction.OverwriteSilently);
+                    }
+                }
+                File.Delete(zipPath);
             }
 
         }
