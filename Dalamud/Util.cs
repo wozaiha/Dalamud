@@ -1,9 +1,13 @@
 using System;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 
 using Dalamud.Game;
+using Dalamud.Interface;
+using Dalamud.Interface.Colors;
+using ImGuiNET;
 using Serilog;
 
 namespace Dalamud
@@ -13,10 +17,30 @@ namespace Dalamud
     /// </summary>
     public static class Util
     {
+        private static string gitHashInternal;
+
         /// <summary>
         /// Gets the assembly version of Dalamud.
         /// </summary>
         public static string AssemblyVersion { get; } = Assembly.GetAssembly(typeof(ChatHandlers)).GetName().Version.ToString();
+
+        /// <summary>
+        /// Gets the git hash value from the assembly
+        /// or null if it cannot be found.
+        /// </summary>
+        /// <returns>The git hash of the assembly.</returns>
+        public static string GetGitHash()
+        {
+            if (gitHashInternal != null)
+                return gitHashInternal;
+
+            var asm = typeof(Util).Assembly;
+            var attrs = asm.GetCustomAttributes<AssemblyMetadataAttribute>();
+
+            gitHashInternal = attrs.FirstOrDefault(a => a.Key == "GitHash")?.Value;
+
+            return gitHashInternal;
+        }
 
         /// <summary>
         /// Read memory from an offset and hexdump them via Serilog.
@@ -94,6 +118,33 @@ namespace Dalamud
             }
 
             return sb.ToString().TrimEnd(Environment.NewLine.ToCharArray());
+        }
+
+        /// <summary>
+        /// Show all properties and fields of the provided object via ImGui.
+        /// </summary>
+        /// <param name="obj">The object to show.</param>
+        public static void ShowObject(object obj)
+        {
+            var type = obj.GetType();
+
+            ImGui.Text($"Object Dump({type.Name}) for {obj}({obj.GetHashCode()})");
+
+            ImGuiHelpers.ScaledDummy(5);
+
+            ImGui.TextColored(ImGuiColors.DalamudOrange, "-> Properties:");
+            foreach (var propertyInfo in type.GetProperties())
+            {
+                ImGui.TextColored(ImGuiColors.DalamudOrange, $"    {propertyInfo.Name}: {propertyInfo.GetValue(obj)}");
+            }
+
+            ImGuiHelpers.ScaledDummy(5);
+
+            ImGui.TextColored(ImGuiColors.HealerGreen, "-> Fields:");
+            foreach (var fieldInfo in type.GetFields())
+            {
+                ImGui.TextColored(ImGuiColors.HealerGreen, $"    {fieldInfo.Name}: {fieldInfo.GetValue(obj)}");
+            }
         }
     }
 }

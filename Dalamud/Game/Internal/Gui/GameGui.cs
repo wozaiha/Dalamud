@@ -2,16 +2,21 @@ using System;
 using System.Runtime.InteropServices;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Hooking;
+using Dalamud.Interface;
 using ImGuiNET;
 using Serilog;
 using SharpDX;
 
 namespace Dalamud.Game.Internal.Gui {
-    public sealed class GameGui : IDisposable {
+    public sealed class GameGui : IDisposable
+    {
+        private readonly Dalamud dalamud;
+
         private GameGuiAddressResolver Address { get; }
         
         public ChatGui Chat { get; private set; }
         public PartyFinderGui PartyFinder { get; private set; }
+        public ToastGui Toast { get; private set; }
 
         [UnmanagedFunctionPointer(CallingConvention.ThisCall)]
         private delegate IntPtr SetGlobalBgmDelegate(UInt16 bgmKey, byte a2, UInt32 a3, UInt32 a4, UInt32 a5, byte a6);
@@ -67,6 +72,12 @@ namespace Dalamud.Game.Internal.Gui {
         private delegate IntPtr GetUIObjectByNameDelegate(IntPtr thisPtr, string uiName, int index);
         private readonly GetUIObjectByNameDelegate getUIObjectByName;
 
+        private delegate IntPtr GetUiModuleDelegate(IntPtr basePtr);
+        private readonly GetUiModuleDelegate getUiModule;
+
+        private delegate IntPtr GetAgentModuleDelegate(IntPtr uiModule);
+        private GetAgentModuleDelegate getAgentModule;
+
         public bool GameUiHidden { get; private set; }
 
         /// <summary>
@@ -95,7 +106,10 @@ namespace Dalamud.Game.Internal.Gui {
         /// </summary>
         public EventHandler<HoveredAction> HoveredActionChanged { get; set; }
 
-        public GameGui(IntPtr baseAddress, SigScanner scanner, Dalamud dalamud) {
+        public GameGui(IntPtr baseAddress, SigScanner scanner, Dalamud dalamud)
+        {
+            this.dalamud = dalamud;
+
             Address = new GameGuiAddressResolver(baseAddress);
             Address.Setup(scanner);
 
@@ -106,9 +120,11 @@ namespace Dalamud.Game.Internal.Gui {
             Log.Verbose("HandleItemHover address {Address}", Address.HandleItemHover);
             Log.Verbose("HandleItemOut address {Address}", Address.HandleItemOut);
             Log.Verbose("GetUIObject address {Address}", Address.GetUIObject);
+            Log.Verbose("GetAgentModule address {Address}", Address.GetAgentModule);
 
             Chat = new ChatGui(Address.ChatManager, scanner, dalamud);
             PartyFinder = new PartyFinderGui(scanner, dalamud);
+            Toast = new ToastGui(scanner, dalamud);
 
             this.setGlobalBgmHook =
                 new Hook<SetGlobalBgmDelegate>(Address.SetGlobalBgm,
@@ -145,6 +161,9 @@ namespace Dalamud.Game.Internal.Gui {
 
             this.GetBaseUIObject = Marshal.GetDelegateForFunctionPointer<GetBaseUIObjectDelegate>(Address.GetBaseUIObject);
             this.getUIObjectByName = Marshal.GetDelegateForFunctionPointer<GetUIObjectByNameDelegate>(Address.GetUIObjectByName);
+
+            this.getUiModule = Marshal.GetDelegateForFunctionPointer<GetUiModuleDelegate>(Address.GetUIModule);
+            this.getAgentModule = Marshal.GetDelegateForFunctionPointer<GetAgentModuleDelegate>(Address.GetAgentModule);
         }
 
         private IntPtr HandleSetGlobalBgmDetour(UInt16 bgmKey, byte a2, UInt32 a3, UInt32 a4, UInt32 a5, byte a6) {
@@ -290,7 +309,7 @@ namespace Dalamud.Game.Internal.Gui {
             // Read current ViewProjectionMatrix plus game window size
             var viewProjectionMatrix = new Matrix();
             float width, height;
-            var windowPos = ImGui.GetMainViewport().Pos;
+            var windowPos = ImGuiHelpers.MainViewport.Pos;
 
             unsafe {
                 var rawMatrix = (float*) (matrixSingleton + 0x1b4).ToPointer();
@@ -325,8 +344,8 @@ namespace Dalamud.Game.Internal.Gui {
         {
             // The game is only visible in the main viewport, so if the cursor is outside
             // of the game window, do not bother calculating anything
-            var windowPos = ImGui.GetMainViewport().Pos;
-            var windowSize = ImGui.GetMainViewport().Size;
+            var windowPos = ImGuiHelpers.MainViewport.Pos;
+            var windowSize = ImGuiHelpers.MainViewport.Size;
 
             if (screenPos.X < windowPos.X || screenPos.X > windowPos.X + windowSize.X ||
                 screenPos.Y < windowPos.Y || screenPos.Y > windowPos.Y + windowSize.Y)
@@ -411,6 +430,15 @@ namespace Dalamud.Game.Internal.Gui {
         }
 
         /// <summary>
+        /// Gets a pointer to the game's UI module.
+        /// </summary>
+        /// <returns>IntPtr pointing to UI module</returns>
+        public IntPtr GetUIModule()
+        {
+            return this.getUiModule(this.dalamud.Framework.Address.BaseAddress);
+        }
+
+        /// <summary>
         /// Gets the pointer to the UI Object with the given name and index.
         /// </summary>
         /// <param name="name">Name of UI to find</param>
@@ -431,10 +459,53 @@ namespace Dalamud.Game.Internal.Gui {
             return new Addon.Addon(addonMem, addonStruct);
         }
 
+        public IntPtr FindAgentInterface(string addonName)
+        {
+            var addon = this.dalamud.Framework.Gui.GetUiObjectByName(addonName, 1);
+            return this.FindAgentInterface(addon);
+        }
+
+        public IntPtr FindAgentInterface(IntPtr addon)
+        {
+            if (addon == IntPtr.Zero)
+                return IntPtr.Zero;
+
+            var uiModule = this.dalamud.Framework.Gui.GetUIModule();
+            if (uiModule == IntPtr.Zero)
+            {
+                return IntPtr.Zero;
+            }
+
+            var agentModule = this.getAgentModule(uiModule);
+            if (agentModule == IntPtr.Zero)
+            {
+                return IntPtr.Zero;
+            }
+
+            var id = Marshal.ReadInt16(addon, 0x1CE);
+            if (id == 0)
+                id = Marshal.ReadInt16(addon, 0x1CC);
+
+            if (id == 0)
+                return IntPtr.Zero;
+
+            for (var i = 0; i < 379; i++)
+            {
+                var agent = Marshal.ReadIntPtr(agentModule, 0x20 + (i * 8));
+                if (agent == IntPtr.Zero)
+                    continue;
+                if (Marshal.ReadInt32(agent, 0x20) == id)
+                    return agent;
+            }
+
+            return IntPtr.Zero;
+        }
+
         public void SetBgm(ushort bgmKey) => this.setGlobalBgmHook.Original(bgmKey, 0, 0, 0, 0, 0); 
 
         public void Enable() {
             Chat.Enable();
+            Toast.Enable();
             PartyFinder.Enable();
             this.setGlobalBgmHook.Enable();
             this.handleItemHoverHook.Enable();
@@ -446,6 +517,7 @@ namespace Dalamud.Game.Internal.Gui {
 
         public void Dispose() {
             Chat.Dispose();
+            Toast.Dispose();
             PartyFinder.Dispose();
             this.setGlobalBgmHook.Dispose();
             this.handleItemHoverHook.Dispose();

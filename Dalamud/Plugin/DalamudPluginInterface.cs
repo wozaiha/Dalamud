@@ -189,6 +189,12 @@ namespace Dalamud.Plugin
         /// <returns>directory with path of AppData/XIVLauncher/pluginConfig/PluginInternalName.</returns>
         public string GetPluginConfigDirectory() => this.configs.GetDirectory(this.pluginName);
 
+        /// <summary>
+        /// Get the loc directory.
+        /// </summary>
+        /// <returns>directory with path of AppData/XIVLauncher/pluginConfig/PluginInternalName/loc.</returns>
+        public string GetPluginLocDirectory() => this.configs.GetDirectory(Path.Combine(this.pluginName, "loc"));
+
         #region Chat Links
 
         /// <summary>
@@ -226,6 +232,7 @@ namespace Dalamud.Plugin
         /// Subscribe to an IPC message by any plugin.
         /// </summary>
         /// <param name="action">The action to take when a message was received.</param>
+        [Obsolete("The current IPC mechanism is obsolete and scheduled to be replaced after API level 3.")]
         public void SubscribeAny(Action<string, ExpandoObject> action)
         {
             if (this.AnyPluginIpcAction != null)
@@ -239,6 +246,7 @@ namespace Dalamud.Plugin
         /// </summary>
         /// <param name="pluginName">The InternalName of the plugin to subscribe to.</param>
         /// <param name="action">The action to take when a message was received.</param>
+        [Obsolete("The current IPC mechanism is obsolete and scheduled to be replaced after API level 3.")]
         public void Subscribe(string pluginName, Action<ExpandoObject> action)
         {
             if (this.dalamud.PluginManager.IpcSubscriptions.Any(x => x.SourcePluginName == this.pluginName && x.SubPluginName == pluginName))
@@ -250,6 +258,7 @@ namespace Dalamud.Plugin
         /// <summary>
         /// Unsubscribe from messages from any plugin.
         /// </summary>
+        [Obsolete("The current IPC mechanism is obsolete and scheduled to be replaced after API level 3.")]
         public void UnsubscribeAny()
         {
             if (this.AnyPluginIpcAction == null)
@@ -262,6 +271,7 @@ namespace Dalamud.Plugin
         /// Unsubscribe from messages from a plugin.
         /// </summary>
         /// <param name="pluginName">The InternalName of the plugin to unsubscribe from.</param>
+        [Obsolete("The current IPC mechanism is obsolete and scheduled to be replaced after API level 3.")]
         public void Unsubscribe(string pluginName)
         {
             var sub = this.dalamud.PluginManager.IpcSubscriptions.FirstOrDefault(x => x.SourcePluginName == this.pluginName && x.SubPluginName == pluginName);
@@ -275,6 +285,7 @@ namespace Dalamud.Plugin
         /// Send a message to all subscribed plugins.
         /// </summary>
         /// <param name="message">The message to send.</param>
+        [Obsolete("The current IPC mechanism is obsolete and scheduled to be replaced after API level 3.")]
         public void SendMessage(ExpandoObject message)
         {
             var subs = this.dalamud.PluginManager.IpcSubscriptions.Where(x => x.SubPluginName == this.pluginName);
@@ -290,6 +301,7 @@ namespace Dalamud.Plugin
         /// <param name="pluginName">The InternalName of the plugin to send the message to.</param>
         /// <param name="message">The message to send.</param>
         /// <returns>True if the corresponding plugin was present and received the message.</returns>
+        [Obsolete("The current IPC mechanism is obsolete and scheduled to be replaced after API level 3.")]
         public bool SendMessage(string pluginName, ExpandoObject message)
         {
             var (_, _, pluginInterface, _) = this.dalamud.PluginManager.Plugins.FirstOrDefault(x => x.Definition.InternalName == pluginName);

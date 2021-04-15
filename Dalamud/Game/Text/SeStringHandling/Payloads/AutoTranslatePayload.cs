@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Dalamud.Data;
-using Dalamud.Data.TransientSheet;
 using Newtonsoft.Json;
 
 namespace Dalamud.Game.Text.SeStringHandling.Payloads
@@ -121,7 +120,7 @@ namespace Dalamud.Game.Text.SeStringHandling.Payloads
                     // in this case, there will only be one entry for this group id
                     row = sheet.First(r => r.Group == this.group);
                     // many of the names contain valid id ranges after the table name, but we don't need those
-                    var actualTableName = row.LookupTable.Split('[')[0];
+                    var actualTableName = row.LookupTable.RawString.Split('[')[0];
 
                     var name = actualTableName switch
                     {
@@ -150,7 +149,7 @@ namespace Dalamud.Game.Text.SeStringHandling.Payloads
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, $"AutoTranslatePayload - failed to resolve: {this}");
+                    Log.Error(e, $"AutoTranslatePayload - failed to resolve: {this.Type} - Group: {this.group}, Key: {this.key}");
                 }
             }
 

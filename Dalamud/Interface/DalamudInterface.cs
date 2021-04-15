@@ -3,9 +3,13 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 using CheapLoc;
+using Dalamud.Interface.Colors;
+using Dalamud.Interface.Components;
+using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using ImGuiNET;
 using Serilog;
@@ -16,9 +20,21 @@ namespace Dalamud.Interface
     /// <summary>
     /// Class handling Dalamud core interface.
     /// </summary>
-    internal class DalamudInterface
+    internal class DalamudInterface : IDisposable
     {
         private readonly Dalamud dalamud;
+
+        private readonly DalamudLogWindow logWindow;
+        private readonly DalamudDataWindow dataWindow;
+        private readonly DalamudCreditsWindow creditsWindow;
+        private readonly DalamudSettingsWindow settingsWindow;
+        private readonly PluginInstallerWindow pluginWindow;
+        private readonly DalamudPluginStatWindow pluginStatWindow;
+        private readonly DalamudChangelogWindow changelogWindow;
+        private readonly ComponentDemoWindow componentDemoWindow;
+        private readonly ColorDemoWindow colorDemoWindow;
+
+        private readonly WindowSystem windowSystem = new WindowSystem("DalamudCore");
 
         private ulong frameCount = 0;
 
@@ -30,22 +46,6 @@ namespace Dalamud.Interface
         private bool isImguiDrawDevMenu = false;
 #endif
 
-        private bool isImguiDrawLogWindow = false;
-        private bool isImguiDrawDataWindow = false;
-        private bool isImguiDrawPluginWindow = false;
-        private bool isImguiDrawCreditsWindow = false;
-        private bool isImguiDrawSettingsWindow = false;
-        private bool isImguiDrawPluginStatWindow = false;
-        private bool isImguiDrawChangelogWindow = false;
-
-        private DalamudLogWindow logWindow;
-        private DalamudDataWindow dataWindow;
-        private DalamudCreditsWindow creditsWindow;
-        private DalamudSettingsWindow settingsWindow;
-        private PluginInstallerWindow pluginWindow;
-        private DalamudPluginStatWindow pluginStatWindow;
-        private DalamudChangelogWindow changelogWindow;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="DalamudInterface"/> class.
         /// </summary>
@@ -53,6 +53,63 @@ namespace Dalamud.Interface
         public DalamudInterface(Dalamud dalamud)
         {
             this.dalamud = dalamud;
+
+            this.logWindow = new DalamudLogWindow(this.dalamud.CommandManager, this.dalamud.Configuration)
+            {
+                IsOpen = false,
+            };
+            this.windowSystem.AddWindow(this.logWindow);
+
+            this.dataWindow = new DalamudDataWindow(this.dalamud)
+            {
+                IsOpen = false,
+            };
+            this.windowSystem.AddWindow(this.dataWindow);
+
+            this.creditsWindow = new DalamudCreditsWindow(this.dalamud)
+            {
+                IsOpen = false,
+            };
+            this.windowSystem.AddWindow(this.creditsWindow);
+
+            this.settingsWindow = new DalamudSettingsWindow(this.dalamud)
+            {
+                IsOpen = false,
+            };
+            this.windowSystem.AddWindow(this.settingsWindow);
+
+            this.pluginWindow = new PluginInstallerWindow(this.dalamud, this.dalamud.StartInfo.GameVersion)
+            {
+                IsOpen = false,
+            };
+            this.windowSystem.AddWindow(this.pluginWindow);
+
+            this.pluginStatWindow = new DalamudPluginStatWindow(this.dalamud.PluginManager)
+            {
+                IsOpen = false,
+            };
+            this.windowSystem.AddWindow(this.pluginStatWindow);
+
+            this.changelogWindow = new DalamudChangelogWindow(this.dalamud)
+            {
+                IsOpen = false,
+            };
+            this.windowSystem.AddWindow(this.changelogWindow);
+
+            this.componentDemoWindow = new ComponentDemoWindow()
+            {
+                IsOpen = false,
+            };
+            this.windowSystem.AddWindow(this.componentDemoWindow);
+
+            this.colorDemoWindow = new ColorDemoWindow()
+            {
+                IsOpen = false,
+            };
+            this.windowSystem.AddWindow(this.colorDemoWindow);
+
+            Log.Information("[DUI] Windows added");
+
             if (dalamud.Configuration.LogOpenAtStartup)
                 this.OpenLog();
         }
@@ -111,8 +168,7 @@ namespace Dalamud.Interface
 
                         if (ImGui.MenuItem("Open Log window"))
                         {
-                            this.logWindow = new DalamudLogWindow(this.dalamud.CommandManager, this.dalamud.Configuration);
-                            this.isImguiDrawLogWindow = true;
+                            this.OpenLog();
                         }
 
                         if (ImGui.BeginMenu("Set log level..."))
@@ -137,8 +193,7 @@ namespace Dalamud.Interface
 
                         if (ImGui.MenuItem("Open Data window"))
                         {
-                            this.dataWindow = new DalamudDataWindow(this.dalamud);
-                            this.isImguiDrawDataWindow = true;
+                            this.OpenData();
                         }
 
                         if (ImGui.MenuItem("Open Credits window"))
@@ -154,6 +209,16 @@ namespace Dalamud.Interface
                         if (ImGui.MenuItem("Open Changelog window"))
                         {
                             this.OpenChangelog();
+                        }
+
+                        if (ImGui.MenuItem("Open Components Demo"))
+                        {
+                            this.OpenComponentDemo();
+                        }
+
+                        if (ImGui.MenuItem("Open Colors Demo"))
+                        {
+                            this.OpenColorsDemo();
                         }
 
                         ImGui.MenuItem("Draw ImGui demo", string.Empty, ref this.isImguiDrawDemoWindow);
@@ -202,19 +267,14 @@ namespace Dalamud.Interface
                     {
                         if (ImGui.MenuItem("Open Plugin installer"))
                         {
-                            this.pluginWindow = new PluginInstallerWindow(this.dalamud, this.dalamud.StartInfo.GameVersion);
-                            this.isImguiDrawPluginWindow = true;
+                            this.OpenPluginInstaller();
                         }
 
                         ImGui.Separator();
 
                         if (ImGui.MenuItem("Open Plugin Stats"))
                         {
-                            if (!this.isImguiDrawPluginStatWindow)
-                            {
-                                this.pluginStatWindow = new DalamudPluginStatWindow(this.dalamud.PluginManager);
-                                this.isImguiDrawPluginStatWindow = true;
-                            }
+                            this.OpenPluginStats();
                         }
 
                         if (ImGui.MenuItem("Print plugin info"))
@@ -249,7 +309,7 @@ namespace Dalamud.Interface
                     {
                         if (ImGui.MenuItem("Export localizable"))
                         {
-                            Loc.ExportLocalizable();
+                            this.dalamud.LocalizationManager.ExportLocalizable();
                         }
 
                         if (ImGui.BeginMenu("Load language..."))
@@ -281,6 +341,7 @@ namespace Dalamud.Interface
                     if (this.dalamud.Framework.Gui.GameUiHidden)
                         ImGui.BeginMenu("UI is hidden...", false);
 
+                    ImGui.BeginMenu(Util.GetGitHash(), false);
                     ImGui.BeginMenu(this.frameCount.ToString(), false);
                     ImGui.BeginMenu(ImGui.GetIO().Framerate.ToString("F2"), false);
 
@@ -291,63 +352,22 @@ namespace Dalamud.Interface
             if (this.dalamud.Framework.Gui.GameUiHidden)
                 return;
 
-            if (this.isImguiDrawLogWindow)
-            {
-                this.isImguiDrawLogWindow = this.logWindow != null && this.logWindow.Draw();
-
-                if (this.isImguiDrawLogWindow == false)
-                {
-                    this.logWindow?.Dispose();
-                    this.logWindow = null;
-                }
-            }
-
-            if (this.isImguiDrawDataWindow)
-            {
-                this.isImguiDrawDataWindow = this.dataWindow != null && this.dataWindow.Draw();
-            }
-
-            if (this.isImguiDrawPluginWindow)
-            {
-                this.isImguiDrawPluginWindow = this.pluginWindow != null && this.pluginWindow.Draw();
-
-                if (!this.isImguiDrawPluginWindow)
-                    this.pluginWindow = null;
-            }
-
-            if (this.isImguiDrawCreditsWindow)
-            {
-                this.isImguiDrawCreditsWindow = this.creditsWindow != null && this.creditsWindow.Draw();
-
-                if (this.isImguiDrawCreditsWindow == false)
-                {
-                    this.creditsWindow?.Dispose();
-                    this.creditsWindow = null;
-                }
-            }
-
-            if (this.isImguiDrawSettingsWindow)
-            {
-                this.isImguiDrawSettingsWindow = this.settingsWindow != null && this.settingsWindow.Draw();
-            }
+            this.windowSystem.Draw();
 
             if (this.isImguiDrawDemoWindow)
                 ImGui.ShowDemoWindow();
+        }
 
-            if (this.isImguiDrawPluginStatWindow)
-            {
-                this.isImguiDrawPluginStatWindow = this.pluginStatWindow != null && this.pluginStatWindow.Draw();
-                if (!this.isImguiDrawPluginStatWindow)
-                {
-                    this.pluginStatWindow?.Dispose();
-                    this.pluginStatWindow = null;
-                }
-            }
+        /// <summary>
+        /// Dispose the window system and all windows that require it.
+        /// </summary>
+        public void Dispose()
+        {
+            this.windowSystem.RemoveAllWindows();
 
-            if (this.isImguiDrawChangelogWindow)
-            {
-                this.isImguiDrawChangelogWindow = this.changelogWindow != null && this.changelogWindow.Draw();
-            }
+            this.dalamud?.Dispose();
+            this.logWindow?.Dispose();
+            this.creditsWindow?.Dispose();
         }
 
         /// <summary>
@@ -355,8 +375,7 @@ namespace Dalamud.Interface
         /// </summary>
         internal void OpenPluginInstaller()
         {
-            this.pluginWindow ??= new PluginInstallerWindow(this.dalamud, this.dalamud.StartInfo.GameVersion);
-            this.isImguiDrawPluginWindow ^= true;
+            this.pluginWindow.IsOpen = true;
         }
 
         /// <summary>
@@ -364,8 +383,7 @@ namespace Dalamud.Interface
         /// </summary>
         internal void OpenChangelog()
         {
-            this.changelogWindow = new DalamudChangelogWindow(this.dalamud);
-            this.isImguiDrawChangelogWindow = true;
+            this.changelogWindow.IsOpen = true;
         }
 
         /// <summary>
@@ -373,8 +391,7 @@ namespace Dalamud.Interface
         /// </summary>
         internal void OpenSettings()
         {
-            this.settingsWindow = new DalamudSettingsWindow(this.dalamud);
-            this.isImguiDrawSettingsWindow ^= true;
+            this.settingsWindow.IsOpen = true;
         }
 
         /// <summary>
@@ -382,8 +399,15 @@ namespace Dalamud.Interface
         /// </summary>
         internal void OpenLog()
         {
-            this.logWindow = new DalamudLogWindow(this.dalamud.CommandManager, this.dalamud.Configuration);
-            this.isImguiDrawLogWindow = true;
+            this.logWindow.IsOpen = true;
+        }
+
+        /// <summary>
+        /// Open the data window.
+        /// </summary>
+        internal void OpenData()
+        {
+            this.dataWindow.IsOpen = true;
         }
 
         /// <summary>
@@ -391,11 +415,105 @@ namespace Dalamud.Interface
         /// </summary>
         internal void OpenCredits()
         {
-            var logoGraphic =
-                this.dalamud.InterfaceManager.LoadImage(
-                    Path.Combine(this.dalamud.AssetDirectory.FullName, "UIRes", "logo.png"));
-            this.creditsWindow = new DalamudCreditsWindow(this.dalamud, logoGraphic, this.dalamud.Framework);
-            this.isImguiDrawCreditsWindow = true;
+            this.creditsWindow.IsOpen = true;
+        }
+
+        /// <summary>
+        /// Open the stats window.
+        /// </summary>
+        internal void OpenPluginStats()
+        {
+            this.pluginStatWindow.IsOpen = true;
+        }
+
+        /// <summary>
+        /// Open the component test window.
+        /// </summary>
+        internal void OpenComponentDemo()
+        {
+            this.componentDemoWindow.IsOpen = true;
+        }
+
+        /// <summary>
+        /// Open the colors test window.
+        /// </summary>
+        internal void OpenColorsDemo()
+        {
+            this.colorDemoWindow.IsOpen = true;
+        }
+
+        /// <summary>
+        /// Toggle the Plugin Installer window.
+        /// </summary>
+        internal void TogglePluginInstaller()
+        {
+            this.pluginWindow.IsOpen ^= true;
+        }
+
+        /// <summary>
+        /// Toggle the changelog window.
+        /// </summary>
+        internal void ToggleChangelog()
+        {
+            this.changelogWindow.IsOpen ^= true;
+        }
+
+        /// <summary>
+        /// Toggle the settings window.
+        /// </summary>
+        internal void ToggleSettings()
+        {
+            this.settingsWindow.IsOpen ^= true;
+        }
+
+        /// <summary>
+        /// Toggle the log window.
+        /// </summary>
+        internal void ToggleLog()
+        {
+            this.logWindow.IsOpen ^= true;
+        }
+
+        /// <summary>
+        /// Toggle the data window.
+        /// </summary>
+        internal void ToggleData()
+        {
+            this.dataWindow.IsOpen ^= true;
+        }
+
+        /// <summary>
+        /// Toggle the data window and preset the dropdown.
+        /// </summary>
+        internal void ToggleData(string dataKind)
+        {
+            this.dataWindow.IsOpen ^= true;
+            if (this.dataWindow.IsOpen)
+                this.dataWindow.SetDataKind(dataKind);
+        }
+
+        /// <summary>
+        /// Toggle the credits window.
+        /// </summary>
+        internal void ToggleCredits()
+        {
+            this.creditsWindow.IsOpen ^= true;
+        }
+
+        /// <summary>
+        /// Toggle the stats window.
+        /// </summary>
+        internal void TogglePluginStats()
+        {
+            this.pluginStatWindow.IsOpen ^= true;
+        }
+
+        /// <summary>
+        /// Toggle the component test window.
+        /// </summary>
+        internal void ToggleComponentDemo()
+        {
+            this.componentDemoWindow.IsOpen ^= true;
         }
     }
 }

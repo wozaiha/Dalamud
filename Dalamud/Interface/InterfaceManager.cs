@@ -14,6 +14,8 @@ using ImGuiScene;
 using Serilog;
 using SharpDX.Direct3D11;
 
+#nullable enable
+
 // general dev notes, here because it's easiest
 /*
  * - Hooking ResizeBuffers seemed to be unnecessary, though I'm not sure why.  Left out for now since it seems to work without it.
@@ -267,15 +269,39 @@ namespace Dalamud.Interface
                 ImGui.GetStyle().Colors[(int) ImGuiCol.TabActive] = new Vector4(0.36f, 0.36f, 0.36f, 1.00f);
 
                 ImGui.GetIO().FontGlobalScale = this.dalamud.Configuration.GlobalUiScale;
-                ImGui.GetIO().ConfigFlags &= ~ImGuiConfigFlags.DockingEnable;
+
+                if (!this.dalamud.Configuration.IsDocking)
+                {
+                    ImGui.GetIO().ConfigFlags &= ~ImGuiConfigFlags.DockingEnable;
+                }
+                else
+                {
+                    ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.DockingEnable;
+                }
+
+                ImGuiHelpers.MainViewport = ImGui.GetMainViewport();
             }
 
             // Process information needed by ImGuiHelpers each frame.
             ImGuiHelpers.NewFrame();
 
+            // Check if we can still enable viewports without any issues.
+            this.CheckViewportState();
+
             this.scene.Render();
 
             return this.presentHook.Original(swapChain, syncInterval, presentFlags);
+        }
+
+        private void CheckViewportState()
+        {
+            if (this.dalamud.Configuration.IsDisableViewport || this.scene.SwapChain.IsFullScreen || ImGui.GetPlatformIO().Monitors.Size == 1)
+            {
+                ImGui.GetIO().ConfigFlags &= ~ImGuiConfigFlags.ViewportsEnable;
+                return;
+            }
+
+            ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.ViewportsEnable;
         }
 
         public static ImFontPtr DefaultFont { get; private set; }
@@ -359,11 +385,13 @@ namespace Dalamud.Interface
 
         private IntPtr ResizeBuffersDetour(IntPtr swapChain, uint bufferCount, uint width, uint height, uint newFormat, uint swapChainFlags)
         {
+#if DEBUG
             Log.Verbose($"Calling resizebuffers swap@{swapChain.ToInt64():X}{bufferCount} {width} {height} {newFormat} {swapChainFlags}");
+#endif
 
             // We have to ensure we're working with the main swapchain,
             // as viewports might be resizing as well
-            if (swapChain != this.scene.SwapChain.NativePointer)
+            if (this.scene == null || swapChain != this.scene.SwapChain.NativePointer)
                 return resizeBuffersHook.Original(swapChain, bufferCount, width, height, newFormat, swapChainFlags);
 
             this.scene?.OnPreResize();

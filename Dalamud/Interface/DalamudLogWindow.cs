@@ -7,13 +7,15 @@ using System.Threading.Tasks;
 
 using Dalamud.Configuration;
 using Dalamud.Game.Command;
+using Dalamud.Interface.Colors;
+using Dalamud.Interface.Windowing;
 using ImGuiNET;
 using Serilog;
 using Serilog.Events;
 
 namespace Dalamud.Interface
 {
-    class DalamudLogWindow : IDisposable {
+    class DalamudLogWindow : Window, IDisposable {
         private readonly CommandManager commandManager;
         private readonly DalamudConfiguration configuration;
         private bool autoScroll;
@@ -24,12 +26,17 @@ namespace Dalamud.Interface
 
         private string commandText = string.Empty;
 
-        public DalamudLogWindow(CommandManager commandManager, DalamudConfiguration configuration) {
+        public DalamudLogWindow(CommandManager commandManager, DalamudConfiguration configuration)
+            : base("Dalamud LOG")
+        {
             this.commandManager = commandManager;
             this.configuration = configuration;
             this.autoScroll = configuration.LogAutoScroll;
             this.openAtStartup = configuration.LogOpenAtStartup;
             SerilogEventSink.Instance.OnLogLine += Serilog_OnLogLine;
+
+            this.Size = new Vector2(500, 400);
+            this.SizeCondition = ImGuiCond.FirstUseEver;
         }
 
         public void Dispose() {
@@ -40,13 +47,13 @@ namespace Dalamud.Interface
         {
             var color = logEvent.level switch
             {
-                LogEventLevel.Error => new Vector4(1f, 0f, 0f, 1f),
-                LogEventLevel.Verbose => new Vector4(1f, 1f, 1f, 1f),
-                LogEventLevel.Debug => new Vector4(0.878f, 0.878f, 0.878f, 1f),
-                LogEventLevel.Information => new Vector4(1f, 1f, 1f, 1f),
-                LogEventLevel.Warning => new Vector4(1f, 0.709f, 0f, 1f),
-                LogEventLevel.Fatal => new Vector4(1f, 0f, 0f, 1f),
-                _ => throw new ArgumentOutOfRangeException()
+                LogEventLevel.Error => ImGuiColors.DalamudRed,
+                LogEventLevel.Verbose => ImGuiColors.DalamudWhite,
+                LogEventLevel.Debug => ImGuiColors.DalamudWhite2,
+                LogEventLevel.Information => ImGuiColors.DalamudWhite,
+                LogEventLevel.Warning => ImGuiColors.DalamudOrange,
+                LogEventLevel.Fatal => ImGuiColors.DalamudRed,
+                _ => throw new ArgumentOutOfRangeException(),
             };
 
             AddLog(logEvent.line, color);
@@ -64,17 +71,7 @@ namespace Dalamud.Interface
             }
         }
 
-        public bool Draw() {
-            ImGui.SetNextWindowSize(new Vector2(500, 400), ImGuiCond.FirstUseEver);
-
-            var isOpen = true;
-
-            if (!ImGui.Begin("Dalamud LOG", ref isOpen, ImGuiWindowFlags.NoCollapse))
-            {
-                ImGui.End();
-                return false;
-            }
-
+        public override void Draw() {
             // Options menu
             if (ImGui.BeginPopup("Options"))
             {
@@ -130,9 +127,6 @@ namespace Dalamud.Interface
                 ImGui.SetScrollHereY(1.0f);
 
             ImGui.EndChild();
-            ImGui.End();
-
-            return isOpen;
         }
     }
 }

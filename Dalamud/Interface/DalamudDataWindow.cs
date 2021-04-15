@@ -4,13 +4,16 @@ using System.Dynamic;
 using System.Linq;
 using System.Numerics;
 
-using Dalamud.Game.Text;
 using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Actors.Types;
 using Dalamud.Game.ClientState.Actors.Types.NonPlayer;
 using Dalamud.Game.ClientState.Structs.JobGauge;
 using Dalamud.Game.Internal;
 using Dalamud.Game.Internal.Gui.Addon;
+using Dalamud.Game.Internal.Gui.Toast;
+using Dalamud.Game.Text;
+using Dalamud.Interface.Colors;
+using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using ImGuiNET;
 using Newtonsoft.Json;
@@ -21,7 +24,7 @@ namespace Dalamud.Interface
     /// <summary>
     /// Class responsible for drawing the data/debug window.
     /// </summary>
-    internal class DalamudDataWindow
+    internal class DalamudDataWindow : Window
     {
         private readonly Dalamud dalamud;
 
@@ -29,6 +32,11 @@ namespace Dalamud.Interface
         private string serverOpString;
 
         private int currentKind;
+        private string[] dataKinds = new[]
+        {
+            "ServerOpCode", "Address", "Actor Table", "Font Test", "Party List", "Plugin IPC", "Condition",
+            "Gauge", "Command", "Addon", "Addon Inspector", "StartInfo", "Target", "Toast", "ImGui"
+        };
 
         private bool drawActors = false;
         private float maxActorDrawDistance = 20;
@@ -46,6 +54,14 @@ namespace Dalamud.Interface
 
         private UIDebug addonInspector = null;
 
+        private string inputTextToast = string.Empty;
+        private int toastPosition = 0;
+        private int toastSpeed = 0;
+        private int questToastPosition = 0;
+        private bool questToastSound = false;
+        private int questToastIconId = 0;
+        private bool questToastCheckmark = false;
+
         private uint copyButtonIndex = 0;
 
         /// <summary>
@@ -53,24 +69,47 @@ namespace Dalamud.Interface
         /// </summary>
         /// <param name="dalamud">The Dalamud instance to access data of.</param>
         public DalamudDataWindow(Dalamud dalamud)
+            : base("Dalamud Data")
         {
             this.dalamud = dalamud;
+
+            this.Size = new Vector2(500, 500);
+            this.SizeCondition = ImGuiCond.FirstUseEver;
 
             this.Load();
         }
 
         /// <summary>
+        /// Set the DataKind dropdown menu.
+        /// </summary>
+        /// <param name="dataKind">Data kind name, can be lower and/or without spaces.</param>
+        public void SetDataKind(string dataKind)
+        {
+            if (string.IsNullOrEmpty(dataKind))
+                return;
+
+            if (dataKind == "ai")
+                dataKind = "Addon Inspector";
+
+            int index;
+            dataKind = dataKind.Replace(" ", string.Empty).ToLower();
+            var dataKinds = this.dataKinds.Select(k => k.Replace(" ", string.Empty).ToLower()).ToList();
+            if ((index = dataKinds.IndexOf(dataKind)) != -1)
+            {
+                this.currentKind = index;
+            }
+            else
+            {
+                this.dalamud.Framework.Gui.Chat.PrintError("/xldata: Invalid Data Type");
+            }
+        }
+
+        /// <summary>
         /// Draw the window via ImGui.
         /// </summary>
-        /// <returns>Whether or not the window is open.</returns>
-        public bool Draw()
+        public override void Draw()
         {
             this.copyButtonIndex = 0;
-            ImGui.SetNextWindowSize(new Vector2(500, 500), ImGuiCond.FirstUseEver);
-
-            var isOpen = true;
-
-            ImGui.Begin("Dalamud Data", ref isOpen);
 
             // Main window
             if (ImGui.Button("Force Reload"))
@@ -79,15 +118,7 @@ namespace Dalamud.Interface
             var copy = ImGui.Button("Copy all");
             ImGui.SameLine();
 
-            ImGui.Combo(
-                "Data kind",
-                ref this.currentKind,
-                new[]
-                {
-                    "ServerOpCode", "Address", "Actor Table", "Font Test", "Party List", "Plugin IPC", "Condition",
-                    "Gauge", "Command", "Addon", "Addon Inspector", "StartInfo", "Target",
-                },
-                13);
+            ImGui.Combo("Data kind", ref this.currentKind, this.dataKinds, this.dataKinds.Length);
 
             ImGui.Checkbox("Resolve GameData", ref this.resolveGameData);
 
@@ -270,6 +301,52 @@ namespace Dalamud.Interface
                         case 12:
                             this.DrawTargetDebug();
                             break;
+
+                        // Toast
+                        case 13:
+                            ImGui.InputText("Toast text", ref this.inputTextToast, 200);
+
+                            ImGui.Combo("Toast Position", ref this.toastPosition, new[] { "Bottom", "Top", }, 2);
+                            ImGui.Combo("Toast Speed", ref this.toastSpeed, new[] { "Slow", "Fast", }, 2);
+                            ImGui.Combo("Quest Toast Position", ref this.questToastPosition, new[] { "Centre", "Right", "Left" }, 3);
+                            ImGui.Checkbox("Quest Checkmark", ref this.questToastCheckmark);
+                            ImGui.Checkbox("Quest Play Sound", ref this.questToastSound);
+                            ImGui.InputInt("Quest Icon ID", ref this.questToastIconId);
+
+                            ImGuiHelpers.ScaledDummy(new Vector2(10, 10));
+
+                            if (ImGui.Button("Show toast"))
+                            {
+                                this.dalamud.Framework.Gui.Toast.ShowNormal(this.inputTextToast, new ToastOptions
+                                {
+                                    Position = (ToastPosition)this.toastPosition,
+                                    Speed = (ToastSpeed)this.toastSpeed,
+                                });
+                            }
+
+                            if (ImGui.Button("Show Quest toast"))
+                            {
+                                this.dalamud.Framework.Gui.Toast.ShowQuest(this.inputTextToast, new QuestToastOptions
+                                {
+                                    Position = (QuestToastPosition)this.questToastPosition,
+                                    DisplayCheckmark = this.questToastCheckmark,
+                                    IconId = (uint)this.questToastIconId,
+                                    PlaySound = this.questToastSound,
+                                });
+                            }
+
+                            if (ImGui.Button("Show Error toast"))
+                            {
+                                this.dalamud.Framework.Gui.Toast.ShowError(this.inputTextToast);
+                            }
+
+                            break;
+
+                        // ImGui
+                        case 14:
+                            ImGui.Text("Monitor count: " + ImGui.GetPlatformIO().Monitors.Size);
+
+                            break;
                     }
                 }
                 else
@@ -285,20 +362,22 @@ namespace Dalamud.Interface
             ImGui.PopStyleVar();
 
             ImGui.EndChild();
-            ImGui.End();
-
-            return isOpen;
         }
 
-        private void DrawActorTable() {
+        private void DrawActorTable()
+        {
             var stateString = string.Empty;
 
             // LocalPlayer is null in a number of situations (at least with the current visible-actors list)
             // which would crash here.
             if (this.dalamud.ClientState.Actors.Length == 0)
+            {
                 ImGui.TextUnformatted("Data not ready.");
+            }
             else if (this.dalamud.ClientState.LocalPlayer == null)
+            {
                 ImGui.TextUnformatted("LocalPlayer null.");
+            }
             else
             {
                 stateString +=
@@ -320,16 +399,17 @@ namespace Dalamud.Interface
                 ImGui.Checkbox("Draw actors on screen", ref this.drawActors);
                 ImGui.SliderFloat("Draw Distance", ref this.maxActorDrawDistance, 2f, 40f);
 
-                for (var i = 0; i < this.dalamud.ClientState.Actors.Length; i++) {
+                for (var i = 0; i < this.dalamud.ClientState.Actors.Length; i++)
+                {
                     var actor = this.dalamud.ClientState.Actors[i];
 
                     if (actor == null)
                         continue;
 
-                    PrintActor(actor, i.ToString());
+                    this.PrintActor(actor, i.ToString());
 
-                    if (this.drawActors &&
-                        this.dalamud.Framework.Gui.WorldToScreen(actor.Position, out var screenCoords)) {
+                    if (this.drawActors && this.dalamud.Framework.Gui.WorldToScreen(actor.Position, out var screenCoords))
+                    {
                         // So, while WorldToScreen will return false if the point is off of game client screen, to
                         // to avoid performance issues, we have to manually determine if creating a window would
                         // produce a new viewport, and skip rendering it if so
@@ -431,7 +511,7 @@ namespace Dalamud.Interface
             }
 
             if (ImGui.Button("Find Agent"))
-                this.findAgentInterfacePtr = this.FindAgentInterface(this.inputAddonName);
+                this.findAgentInterfacePtr = this.dalamud.Framework.Gui.FindAgentInterface(this.inputAddonName);
 
             if (this.resultAddon != null)
             {
@@ -462,7 +542,10 @@ namespace Dalamud.Interface
             var targetMgr = this.dalamud.ClientState.Targets;
 
             if (targetMgr.CurrentTarget != null)
+            {
                 this.PrintActor(targetMgr.CurrentTarget, "CurrentTarget");
+                Util.ShowObject(targetMgr.CurrentTarget);
+            }
 
             if (targetMgr.FocusTarget != null)
                 this.PrintActor(targetMgr.FocusTarget, "FocusTarget");
@@ -472,6 +555,9 @@ namespace Dalamud.Interface
 
             if (targetMgr.PreviousTarget != null)
                 this.PrintActor(targetMgr.PreviousTarget, "PreviousTarget");
+
+            if (targetMgr.SoftTarget != null)
+                this.PrintActor(targetMgr.SoftTarget, "SoftTarget");
 
             if (ImGui.Button("Clear CT"))
                 targetMgr.ClearCurrentTarget();
@@ -502,30 +588,6 @@ namespace Dalamud.Interface
                 this.serverOpString = JsonConvert.SerializeObject(this.dalamud.Data.ServerOpCodes, Formatting.Indented);
                 this.wasReady = true;
             }
-        }
-
-        private unsafe IntPtr FindAgentInterface(string addonName)
-        {
-            var addon = this.dalamud.Framework.Gui.GetUiObjectByName(addonName, 1);
-            if (addon == IntPtr.Zero) return IntPtr.Zero;
-            SafeMemory.Read<short>(addon + 0x1CE, out var id);
-
-            if (id == 0)
-                _ = SafeMemory.Read(addon + 0x1CC, out id);
-
-            var framework = this.dalamud.Framework.Address.BaseAddress;
-            var uiModule = *(IntPtr*)(framework + 0x29F8);
-            var agentModule = uiModule + 0xC3E78;
-            for (var i = 0; i < 379; i++)
-            {
-                var agent = *(IntPtr*)(agentModule + 0x20 + (i * 8));
-                if (agent == IntPtr.Zero)
-                    continue;
-                if (*(short*)(agent + 0x20) == id)
-                    return agent;
-            }
-
-            return IntPtr.Zero;
         }
 
         private void PrintActor(Actor actor, string tag)
