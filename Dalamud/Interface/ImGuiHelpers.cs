@@ -30,9 +30,6 @@ namespace Dalamud.Interface
         /// <param name="size">The size of the dummy.</param>
         public static void ScaledDummy(float size) => ImGui.Dummy(new Vector2(size * GlobalScale, size * GlobalScale));
 
-            return mainViewportId;
-        }
-
         /// <summary>
         /// Create a dummy scaled by the global Dalamud scale.
         /// </summary>

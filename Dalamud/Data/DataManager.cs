@@ -171,12 +171,12 @@ namespace Dalamud.Data
         public ExcelSheet<T> GetExcelSheet<T>(ClientLanguage language) where T : ExcelRow
         {
             var lang = language switch {
-                ClientLanguage.Japanese => Language.Japanese,
-                ClientLanguage.English => Language.English,
-                ClientLanguage.German => Language.German,
-                ClientLanguage.French => Language.French,
+                ClientLanguage.Japanese => Lumina.Data.Language.Japanese,
+                ClientLanguage.English => Lumina.Data.Language.English,
+                ClientLanguage.German => Lumina.Data.Language.German,
+                ClientLanguage.French => Lumina.Data.Language.French,
                 ClientLanguage.ChineseSimplified => Lumina.Data.Language.ChineseSimplified,
-                _ => throw new ArgumentOutOfRangeException(nameof(this.language), "Unknown Language: " + this.language)
+                _ => throw new ArgumentOutOfRangeException(nameof(language), "Unknown Language: " + language)
             };
             return this.Excel.GetSheet<T>(lang);
         }

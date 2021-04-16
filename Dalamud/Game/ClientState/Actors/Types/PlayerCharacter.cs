@@ -23,7 +23,7 @@ namespace Dalamud.Game.ClientState.Actors.Types
         public PlayerCharacter(IntPtr address, Structs.Actor actorStruct, Dalamud dalamud)
             : base(address, actorStruct, dalamud)
         {
-            var companyTagBytes = new byte[5];
+            var companyTagBytes = new byte[9];
             Marshal.Copy(this.Address + ActorOffsets.CompanyTag, companyTagBytes, 0, companyTagBytes.Length);
             this.CompanyTag = Encoding.UTF8.GetString(companyTagBytes.TakeWhile(c => c != 0x0).ToArray());
         }

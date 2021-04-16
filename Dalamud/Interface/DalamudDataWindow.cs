@@ -509,9 +509,10 @@ namespace Dalamud.Interface
                     this.dalamud.Framework.Gui.GetAddonByName(
                         this.inputAddonName, this.inputAddonIndex);
             }
-
+            /*
             if (ImGui.Button("Find Agent"))
                 this.findAgentInterfacePtr = this.dalamud.Framework.Gui.FindAgentInterface(this.inputAddonName);
+            */
 
             if (this.resultAddon != null)
             {

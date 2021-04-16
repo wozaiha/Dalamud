@@ -77,6 +77,7 @@ namespace Dalamud.Game.Text.Sanitizer
             var sanitizedString = FilterUnprintableCharacters(unsanitizedString);
             switch (clientLanguage)
             {
+                case ClientLanguage.ChineseSimplified:
                 case ClientLanguage.Japanese:
                 case ClientLanguage.English:
                     return sanitizedString;
@@ -95,6 +96,7 @@ namespace Dalamud.Game.Text.Sanitizer
             var sanitizedStrings = new List<string>();
             switch (clientLanguage)
             {
+                case ClientLanguage.ChineseSimplified:
                 case ClientLanguage.Japanese:
                 case ClientLanguage.English:
                     sanitizedStrings.AddRange(unsanitizedStrings.Select(FilterUnprintableCharacters));

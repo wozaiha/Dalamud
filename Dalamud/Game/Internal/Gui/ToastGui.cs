@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -97,7 +97,7 @@ namespace Dalamud.Game.Internal.Gui
         {
             var terminated = new byte[source.Length + 1];
             Array.Copy(source, 0, terminated, 0, source.Length);
-            terminated[^1] = 0;
+            terminated[terminated.Length - 1] = 0;
 
             return terminated;
         }

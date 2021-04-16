@@ -1,4 +1,6 @@
+using System;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Dalamud.Game.ClientState.Actors.Types
 {
