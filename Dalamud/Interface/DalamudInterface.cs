@@ -9,6 +9,7 @@ using System.Runtime.InteropServices;
 using CheapLoc;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Components;
+using Dalamud.Interface.Scratchpad;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using ImGuiNET;
@@ -33,8 +34,10 @@ namespace Dalamud.Interface
         private readonly DalamudChangelogWindow changelogWindow;
         private readonly ComponentDemoWindow componentDemoWindow;
         private readonly ColorDemoWindow colorDemoWindow;
+        private readonly ScratchpadWindow scratchpadWindow;
+        private readonly GamepadModeNotifierWindow gamepadModeNotifierWindow;
 
-        private readonly WindowSystem windowSystem = new WindowSystem("DalamudCore");
+        private readonly WindowSystem windowSystem = new("DalamudCore");
 
         private ulong frameCount = 0;
 
@@ -107,6 +110,15 @@ namespace Dalamud.Interface
                 IsOpen = false,
             };
             this.windowSystem.AddWindow(this.colorDemoWindow);
+
+            this.scratchpadWindow = new ScratchpadWindow(this.dalamud)
+            {
+                IsOpen = false,
+            };
+            this.windowSystem.AddWindow(this.scratchpadWindow);
+
+            this.gamepadModeNotifierWindow = new GamepadModeNotifierWindow();
+            this.windowSystem.AddWindow(this.gamepadModeNotifierWindow);
 
             Log.Information("[DUI] Windows added");
 
@@ -237,7 +249,7 @@ namespace Dalamud.Interface
 
                         if (ImGui.MenuItem("Cause AccessViolation"))
                         {
-                            var a = Marshal.ReadByte(IntPtr.Zero);
+                            Marshal.ReadByte(IntPtr.Zero);
                         }
 
                         ImGui.Separator();
@@ -305,6 +317,21 @@ namespace Dalamud.Interface
                         ImGui.EndMenu();
                     }
 
+                    if (ImGui.BeginMenu("Scratchpad"))
+                    {
+                        if (ImGui.MenuItem("Open Scratchpad"))
+                        {
+                            this.OpenScratchpadWindow();
+                        }
+
+                        if (ImGui.MenuItem("Dispose all scratches"))
+                        {
+                            this.scratchpadWindow.Execution.DisposeAllScratches();
+                        }
+
+                        ImGui.EndMenu();
+                    }
+
                     if (ImGui.BeginMenu("Localization"))
                     {
                         if (ImGui.MenuItem("Export localizable"))
@@ -363,9 +390,9 @@ namespace Dalamud.Interface
         /// </summary>
         public void Dispose()
         {
+            this.scratchpadWindow.Dispose();
             this.windowSystem.RemoveAllWindows();
 
-            this.dalamud?.Dispose();
             this.logWindow?.Dispose();
             this.creditsWindow?.Dispose();
         }
@@ -443,6 +470,14 @@ namespace Dalamud.Interface
         }
 
         /// <summary>
+        /// Open the colors test window.
+        /// </summary>
+        internal void OpenScratchpadWindow()
+        {
+            this.scratchpadWindow.IsOpen = true;
+        }
+
+        /// <summary>
         /// Toggle the Plugin Installer window.
         /// </summary>
         internal void TogglePluginInstaller()
@@ -485,6 +520,7 @@ namespace Dalamud.Interface
         /// <summary>
         /// Toggle the data window and preset the dropdown.
         /// </summary>
+        /// <param name="dataKind">The data kind to toggle.</param>
         internal void ToggleData(string dataKind)
         {
             this.dataWindow.IsOpen ^= true;
@@ -514,6 +550,22 @@ namespace Dalamud.Interface
         internal void ToggleComponentDemo()
         {
             this.componentDemoWindow.IsOpen ^= true;
+        }
+
+        /// <summary>
+        /// Toggle the scratchpad window.
+        /// </summary>
+        internal void ToggleScratchpadWindow()
+        {
+            this.scratchpadWindow.IsOpen ^= true;
+        }
+
+        /// <summary>
+        /// Toggle the gamepad notifier window window.
+        /// </summary>
+        internal void ToggleGamePadNotifierWindow()
+        {
+            this.gamepadModeNotifierWindow.IsOpen ^= true;
         }
     }
 }

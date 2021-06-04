@@ -2,15 +2,17 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 
 using Dalamud.Configuration;
 using Dalamud.Data;
 using Dalamud.Game;
-using Dalamud.Game.Text.SeStringHandling;
+using Dalamud.Game.Addon;
 using Dalamud.Game.ClientState;
 using Dalamud.Game.Command;
 using Dalamud.Game.Internal;
 using Dalamud.Game.Network;
+using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface;
 using Dalamud.Plugin;
 using Serilog;
@@ -31,6 +33,8 @@ namespace Dalamud
 
         private readonly string baseDirectory;
 
+        private bool hasDisposedPlugins = false;
+
         #endregion
 
         /// <summary>
@@ -50,7 +54,7 @@ namespace Dalamud
             this.unloadSignal.Reset();
 
             this.finishUnloadSignal = finishSignal;
-            this.unloadSignal.Reset();
+            this.finishUnloadSignal.Reset();
         }
 
         #region Native Game Subsystems
@@ -162,6 +166,11 @@ namespace Dalamud
         /// </summary>
         internal NetworkHandlers NetworkHandlers { get; private set; }
 
+        /// <summary>
+        /// Gets subsystem responsible for adding the Dalamud menu items to the game's system menu.
+        /// </summary>
+        internal DalamudSystemMenu SystemMenu { get; private set; }
+
         #endregion
 
         /// <summary>
@@ -175,19 +184,22 @@ namespace Dalamud
         internal bool IsReady { get; private set; }
 
         /// <summary>
+        /// Gets a value indicating whether the plugin system is loaded.
+        /// </summary>
+        internal bool IsLoadedPluginSystem => this.PluginManager != null;
+
+        /// <summary>
         /// Gets location of stored assets.
         /// </summary>
         internal DirectoryInfo AssetDirectory => new DirectoryInfo(this.StartInfo.WorkingDirectory);
 
         /// <summary>
-        /// Start and initialize Dalamud subsystems.
+        /// Runs tier 1 of the Dalamud initialization process.
         /// </summary>
-        public void Start()
+        public void LoadTier1()
         {
             try
             {
-                this.Configuration = DalamudConfiguration.Load(this.StartInfo.ConfigurationPath);
-
                 try
                 {
                     var res = AssetManager.EnsureAssets(this.baseDirectory);
@@ -197,7 +209,9 @@ namespace Dalamud
                         this.Unload();
                         return;
                     }
-                }catch (Exception e) {
+                }
+                catch (Exception e)
+                {
                     Log.Error(e, "Error in asset task.");
                     this.Unload();
                     return;
@@ -207,31 +221,48 @@ namespace Dalamud
                 this.TargetModule = Process.GetCurrentProcess().MainModule;
                 this.SigScanner = new SigScanner(this.TargetModule, true);
 
-                Log.Verbose("[START] Scanner OK!");
-
-                this.AntiDebug = new AntiDebug(this.SigScanner);
-#if DEBUG
-                AntiDebug.Enable();
-#endif
-
-                Log.Verbose("[START] AntiDebug OK!");
-
                 // Initialize game subsystem
                 this.Framework = new Framework(this.SigScanner, this);
 
-                Log.Verbose("[START] Framework OK!");
+                Log.Information("[T1] Framework OK!");
+
+                this.Framework.Enable();
+                Log.Information("[T1] Framework ENABLE!");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Tier 1 load failed.");
+                this.Unload();
+            }
+        }
+
+        /// <summary>
+        /// Runs tier 2 of the Dalamud initialization process.
+        /// </summary>
+        public void LoadTier2()
+        {
+            try
+            {
+                this.Configuration = DalamudConfiguration.Load(this.StartInfo.ConfigurationPath);
+
+                this.AntiDebug = new AntiDebug(this.SigScanner);
+#if DEBUG
+                this.AntiDebug.Enable();
+#endif
+
+                Log.Information("[T2] AntiDebug OK!");
 
                 this.WinSock2 = new WinSockHandlers();
 
-                Log.Verbose("[START] WinSock OK!");
+                Log.Information("[T2] WinSock OK!");
 
                 this.NetworkHandlers = new NetworkHandlers(this, this.StartInfo.OptOutMbCollection);
 
-                Log.Verbose("[START] NH OK!");
+                Log.Information("[T2] NH OK!");
 
                 this.ClientState = new ClientState(this, this.StartInfo, this.SigScanner);
 
-                Log.Verbose("[START] CS OK!");
+                Log.Information("[T2] CS OK!");
 
                 this.LocalizationManager = new Localization(Path.Combine(this.AssetDirectory.FullName, "UIRes", "loc", "dalamud"), "dalamud_");
                 if (!string.IsNullOrEmpty(this.Configuration.LanguageOverride))
@@ -239,14 +270,8 @@ namespace Dalamud
                 else
                     this.LocalizationManager.SetupWithUiCulture();
 
-                Log.Verbose("[START] LOC OK!");
+                Log.Information("[T2] LOC OK!");
 
-                this.PluginRepository =
-                    new PluginRepository(this, this.StartInfo.PluginDirectory, this.StartInfo.GameVersion);
-
-                Log.Verbose("[START] PREPO OK!");
-
-                var isInterfaceLoaded = false;
                 if (!bool.Parse(Environment.GetEnvironmentVariable("DALAMUD_NOT_HAVE_INTERFACE") ?? "false"))
                 {
                     try
@@ -254,11 +279,8 @@ namespace Dalamud
                         this.InterfaceManager = new InterfaceManager(this, this.SigScanner);
 
                         this.InterfaceManager.Enable();
-                        isInterfaceLoaded = true;
 
-                        Log.Verbose("[START] IM OK!");
-
-                        this.InterfaceManager.WaitForFontRebuild();
+                        Log.Information("[T2] IM OK!");
                     }
                     catch (Exception e)
                     {
@@ -266,7 +288,7 @@ namespace Dalamud
                     }
                 }
 
-                this.Data = new DataManager(this.StartInfo.Language);
+                this.Data = new DataManager(this.StartInfo.Language, this.InterfaceManager);
                 try
                 {
                     this.Data.Initialize(this.AssetDirectory.FullName);
@@ -278,22 +300,51 @@ namespace Dalamud
                     return;
                 }
 
-                Log.Verbose("[START] Data OK!");
+                Log.Information("[T2] Data OK!");
 
                 this.SeStringManager = new SeStringManager(this.Data);
 
-                Log.Verbose("[START] SeString OK!");
+                Log.Information("[T2] SeString OK!");
 
                 // Initialize managers. Basically handlers for the logic
                 this.CommandManager = new CommandManager(this, this.StartInfo.Language);
                 this.DalamudCommands = new DalamudCommands(this);
                 this.DalamudCommands.SetupCommands();
 
-                Log.Verbose("[START] CM OK!");
+                Log.Information("[T2] CM OK!");
 
                 this.ChatHandlers = new ChatHandlers(this);
 
-                Log.Verbose("[START] CH OK!");
+                Log.Information("[T2] CH OK!");
+
+                this.ClientState.Enable();
+                Log.Information("[T2] CS ENABLE!");
+
+                this.SystemMenu = new DalamudSystemMenu(this);
+                this.SystemMenu.Enable();
+
+                this.IsReady = true;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Tier 2 load failed.");
+                this.Unload();
+            }
+        }
+
+        /// <summary>
+        /// Runs tier 3 of the Dalamud initialization process.
+        /// </summary>
+        public void LoadTier3()
+        {
+            try
+            {
+                Log.Information("[T3] START!");
+
+                this.PluginRepository =
+                    new PluginRepository(this, this.StartInfo.PluginDirectory, this.StartInfo.GameVersion);
+
+                Log.Information("[T3] PREPO OK!");
 
                 if (!bool.Parse(Environment.GetEnvironmentVariable("DALAMUD_NOT_HAVE_PLUGINS") ?? "false"))
                 {
@@ -301,15 +352,17 @@ namespace Dalamud
                     {
                         this.PluginRepository.CleanupPlugins();
 
-                        Log.Verbose("[START] PRC OK!");
+                        Log.Information("[T3] PRC OK!");
 
                         this.PluginManager = new PluginManager(
                             this,
                             this.StartInfo.PluginDirectory,
                             this.StartInfo.DefaultPluginDirectory);
-                        this.PluginManager.LoadPlugins();
+                        this.PluginManager.LoadSynchronousPlugins();
 
-                        Log.Verbose("[START] PM OK!");
+                        Task.Run(() => this.PluginManager.LoadDeferredPlugins());
+
+                        Log.Information("[T3] PM OK!");
                     }
                     catch (Exception ex)
                     {
@@ -317,26 +370,18 @@ namespace Dalamud
                     }
                 }
 
-                this.Framework.Enable();
-                Log.Verbose("[START] Framework ENABLE!");
-
-                this.ClientState.Enable();
-                Log.Verbose("[START] CS ENABLE!");
-
                 this.DalamudUi = new DalamudInterface(this);
                 this.InterfaceManager.OnDraw += this.DalamudUi.Draw;
 
-                Log.Verbose("[START] DUI OK!");
+                Log.Information("[T3] DUI OK!");
 
-                this.IsReady = true;
-
-                Troubleshooting.LogTroubleshooting(this, isInterfaceLoaded);
+                Troubleshooting.LogTroubleshooting(this, this.InterfaceManager != null);
 
                 Log.Information("Dalamud is ready.");
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Dalamud::Start() failed.");
+                Log.Error(ex, "Tier 3 load failed.");
                 this.Unload();
             }
         }
@@ -359,36 +404,50 @@ namespace Dalamud
         }
 
         /// <summary>
-        ///     Wait for a queued unload to be finalized.
+        /// Wait for a queued unload to be finalized.
         /// </summary>
         public void WaitForUnloadFinish()
         {
-            this.finishUnloadSignal.WaitOne();
+            this.finishUnloadSignal?.WaitOne();
         }
 
         /// <summary>
-        ///     Dispose Dalamud subsystems.
+        /// Dispose subsystems related to plugin handling.
+        /// </summary>
+        public void DisposePlugins()
+        {
+            this.hasDisposedPlugins = true;
+
+            // this must be done before unloading plugins, or it can cause a race condition
+            // due to rendering happening on another thread, where a plugin might receive
+            // a render call after it has been disposed, which can crash if it attempts to
+            // use any resources that it freed in its own Dispose method
+            this.InterfaceManager?.Dispose();
+
+            try
+            {
+                this.PluginManager.UnloadPlugins();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Plugin unload failed.");
+            }
+
+            this.DalamudUi?.Dispose();
+        }
+
+        /// <summary>
+        /// Dispose Dalamud subsystems.
         /// </summary>
         public void Dispose()
         {
             try
             {
-                // this must be done before unloading plugins, or it can cause a race condition
-                // due to rendering happening on another thread, where a plugin might receive
-                // a render call after it has been disposed, which can crash if it attempts to
-                // use any resources that it freed in its own Dispose method
-                this.InterfaceManager?.Dispose();
-
-                try
+                if (!this.hasDisposedPlugins)
                 {
-                    this.PluginManager.UnloadPlugins();
+                    this.DisposePlugins();
+                    Thread.Sleep(100);
                 }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Plugin unload failed.");
-                }
-
-                this.DalamudUi?.Dispose();
 
                 this.Framework?.Dispose();
                 this.ClientState?.Dispose();
@@ -403,6 +462,8 @@ namespace Dalamud
 
                 this.AntiDebug?.Dispose();
 
+                this.SystemMenu?.Dispose();
+
                 Log.Debug("Dalamud::Dispose() OK!");
             }
             catch (Exception ex)
@@ -412,12 +473,11 @@ namespace Dalamud
         }
 
         /// <summary>
-        ///     Replace the built-in exception handler with a debug one.
+        /// Replace the built-in exception handler with a debug one.
         /// </summary>
         internal void ReplaceExceptionHandler()
         {
-            var releaseFilter = this.SigScanner.ScanText(
-                "40 55 53 56 48 8D AC 24 ?? ?? ?? ?? B8 ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 2B E0 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 85 ?? ?? ?? ?? 48 83 3D ?? ?? ?? ?? ??");
+            var releaseFilter = this.SigScanner.ScanText("40 55 53 56 48 8D AC 24 ?? ?? ?? ?? B8 ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 2B E0 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 85 ?? ?? ?? ?? 48 83 3D ?? ?? ?? ?? ??");
             Log.Debug($"SE debug filter at {releaseFilter.ToInt64():X}");
 
             var oldFilter = NativeFunctions.SetUnhandledExceptionFilter(releaseFilter);

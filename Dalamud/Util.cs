@@ -1,7 +1,7 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Text;
 
 using Dalamud.Game;
@@ -49,9 +49,15 @@ namespace Dalamud
         /// <param name="len">The length to read.</param>
         public static void DumpMemory(IntPtr offset, int len = 512)
         {
-            var data = new byte[len];
-            Marshal.Copy(offset, data, 0, len);
-            Log.Information(ByteArrayToHex(data));
+            try
+            {
+                SafeMemory.ReadBytes(offset, len, out var data);
+                Log.Information(ByteArrayToHex(data));
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Read failed");
+            }
         }
 
         /// <summary>
@@ -145,6 +151,19 @@ namespace Dalamud
             {
                 ImGui.TextColored(ImGuiColors.HealerGreen, $"    {fieldInfo.Name}: {fieldInfo.GetValue(obj)}");
             }
+        }
+
+        /// <summary>
+        /// Display an error MessageBox and exit the current process.
+        /// </summary>
+        /// <param name="message">MessageBox body.</param>
+        /// <param name="caption">MessageBox caption (title).</param>
+        public static void Fatal(string message, string caption)
+        {
+            var flags = NativeFunctions.MessageBoxType.Ok | NativeFunctions.MessageBoxType.IconError;
+
+            NativeFunctions.MessageBox(Process.GetCurrentProcess().MainWindowHandle, message, caption, flags);
+            Environment.Exit(-1);
         }
     }
 }

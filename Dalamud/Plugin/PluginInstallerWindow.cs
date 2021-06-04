@@ -72,6 +72,9 @@ namespace Dalamud.Plugin
             LastUpdate,
         }
 
+        /// <summary>
+        /// Code to be executed when the window is opened.
+        /// </summary>
         public override void OnOpen()
         {
             base.OnOpen();
@@ -192,7 +195,8 @@ namespace Dalamud.Plugin
                 }
                 else
                 {
-                    if (ImGui.Button(Loc.Localize("InstallerUpdatePlugins", "Update plugins")))
+                    if (ImGui.Button(Loc.Localize("InstallerUpdatePlugins", "Update plugins")) &&
+                        this.dalamud.PluginRepository.State == PluginRepository.InitializationState.Success)
                     {
                         this.installStatus = PluginInstallStatus.InProgress;
 
@@ -217,7 +221,8 @@ namespace Dalamud.Plugin
                             this.errorModalDrawing = this.installStatus == PluginInstallStatus.Fail;
                             this.errorModalOnNextFrame = this.installStatus == PluginInstallStatus.Fail;
 
-                            this.dalamud.PluginRepository.PrintUpdatedPlugins(this.updatedPlugins, Loc.Localize("DalamudPluginUpdates", "Updates:"));
+                            this.dalamud.PluginRepository.PrintUpdatedPlugins(
+                                this.updatedPlugins, Loc.Localize("DalamudPluginUpdates", "Updates:"));
 
                             this.RefetchPlugins();
                         });
@@ -305,8 +310,11 @@ namespace Dalamud.Plugin
 
         private void ResortPlugins()
         {
+            if (this.dalamud.PluginRepository.State != PluginRepository.InitializationState.Success)
+                return;
+
             var availableDefs = this.dalamud.PluginRepository.PluginMaster.Where(
-                x => this.pluginListInstalled.All(y => x.InternalName != y.InternalName))
+                                        x => this.pluginListInstalled.All(y => x.InternalName != y.InternalName))
                                     .GroupBy(x => new { x.InternalName, x.AssemblyVersion })
                                     .Select(y => y.First()).ToList();
 
@@ -461,13 +469,13 @@ namespace Dalamud.Plugin
 
                                 Task.Run(() => this.dalamud.PluginRepository.InstallPlugin(pluginDefinition, true, false, isTestingAvailable)).ContinueWith(t =>
                                 {
-                                                 this.installStatus =
-                                                 t.Result ? PluginInstallStatus.Success : PluginInstallStatus.Fail;
-                                                 this.installStatus =
-                                                 t.IsFaulted ? PluginInstallStatus.Fail : this.installStatus;
+                                    this.installStatus =
+                                    t.Result ? PluginInstallStatus.Success : PluginInstallStatus.Fail;
+                                    this.installStatus =
+                                    t.IsFaulted ? PluginInstallStatus.Fail : this.installStatus;
 
-                                                 this.errorModalDrawing = this.installStatus == PluginInstallStatus.Fail;
-                                                 this.errorModalOnNextFrame = this.installStatus == PluginInstallStatus.Fail;
+                                    this.errorModalDrawing = this.installStatus == PluginInstallStatus.Fail;
+                                    this.errorModalOnNextFrame = this.installStatus == PluginInstallStatus.Fail;
                                 });
                             }
                         }
