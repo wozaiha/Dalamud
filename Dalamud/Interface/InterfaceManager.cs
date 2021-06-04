@@ -427,12 +427,12 @@ namespace Dalamud.Interface
             fontConfig.MergeMode = true;
             fontConfig.PixelSnapH = true;
 
-            var fontPathSc = Path.Combine(this.dalamud.StartInfo.WorkingDirectory, "UIRes", "NotoSansCJKsc-Medium.otf");
+            var fontPathSc = Path.Combine(this.dalamud.AssetDirectory.FullName, "UIRes", "NotoSansCJKsc-Medium.otf");
 
             if (!File.Exists(fontPathSc))
                 ShowFontError(fontPathSc);
 
-            var japaneseRangeHandle = GCHandle.Alloc(GlyphRangesJapanese.GlyphRanges, GCHandleType.Pinned);
+            var chineseRangeHandle = GCHandle.Alloc(GlyphRangesChinese.GlyphRanges, GCHandleType.Pinned);
 
             DefaultFont = ImGui.GetIO().Fonts.AddFontFromFileTTF(fontPathSc, 17.0f, null, chineseRangeHandle.AddrOfPinnedObject());
 

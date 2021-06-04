@@ -91,6 +91,13 @@ namespace Dalamud.Game
                     new Regex(@"^Un servant a vendu (?<item>.+) pour (?<value>[\d,.]+) gil à (?:.+)\.$", RegexOptions.Compiled),
                 }
             },
+            {
+                ClientLanguage.ChineseSimplified,
+                new Regex[]
+                {
+                    new Regex(@"^在(?:.+)市场以(?<origValue>[\d,.]+)的价格出售的“(?<item>.+)”成功售出，获得了(?<value>[\d,.]+)金币。$", RegexOptions.Compiled),
+                }
+            },
         };
 
         private readonly Regex urlRegex = new(@"(http|ftp|https)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?", RegexOptions.Compiled);

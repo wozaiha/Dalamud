@@ -19,7 +19,7 @@ namespace Dalamud.Plugin
 {
     internal class PluginRepository
     {
-        private const string PluginMasterUrl => "https://dalamudplugins-1253720819.cos.ap-nanjing.myqcloud.com/pluginmaster.json";
+        private const string PluginMasterUrl = "https://dalamudplugins-1253720819.cos.ap-nanjing.myqcloud.com/pluginmaster.json";
 
         private readonly Dalamud dalamud;
         private string pluginDirectory;

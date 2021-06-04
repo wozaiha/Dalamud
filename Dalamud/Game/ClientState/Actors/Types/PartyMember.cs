@@ -39,6 +39,19 @@ namespace Dalamud.Game.ClientState.Actors.Types
         }
 
         /// <summary>
+        /// Read string from Utf8 bytes.
+        /// </summary>
+        /// <param name="utf8">The pointer of the string bytes.</param>
+        public static string StringFromNativeUtf8(IntPtr utf8)
+        {
+            int len = 0;
+            while (Marshal.ReadByte(utf8, len) != 0) ++len;
+            byte[] buffer = new byte[len];
+            Marshal.Copy(utf8, buffer, 0, buffer.Length);
+            return Encoding.UTF8.GetString(buffer);
+        }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="PartyMember"/> class.
         /// </summary>
         /// <param name="table">The ActorTable instance.</param>

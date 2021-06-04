@@ -29,7 +29,7 @@ namespace Dalamud.Plugin
 
         private readonly Type interfaceType = typeof(IDalamudPlugin);
 
-        // private readonly List<BannedPlugin> bannedPlugins;
+        private readonly List<BannedPlugin> bannedPlugins;
 
         private IEnumerable<(FileInfo DllFile, PluginDefinition Definition, bool IsRaw)> deferredPlugins;
 
@@ -49,10 +49,8 @@ namespace Dalamud.Plugin
             this.IpcSubscriptions = new List<(string SourcePluginName, string SubPluginName, Action<ExpandoObject> SubAction)>();
 
             this.pluginConfigs = new PluginConfigurations(Path.Combine(Path.GetDirectoryName(dalamud.StartInfo.ConfigurationPath), "pluginConfigs"));
-            /*
             this.bannedPlugins = JsonConvert.DeserializeObject<List<BannedPlugin>>(
                 File.ReadAllText(Path.Combine(this.dalamud.StartInfo.AssetDirectory, "UIRes", "bannedplugin.json")));
-            */
 
             // Try to load missing assemblies from the local directory of the requesting assembly
             // This would usually be implicit when using Assembly.Load(), but Assembly.LoadFile() doesn't do it...

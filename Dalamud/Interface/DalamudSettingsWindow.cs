@@ -123,7 +123,7 @@ namespace Dalamud.Interface
                     if (language != "ko")
                     {
                         locLanguage = CultureInfo.GetCultureInfo(language).NativeName;
-                        locLanguagesList.Add(char.ToUpper(locLanguage[0]) + locLanguage[1..]);
+                        locLanguagesList.Add(char.ToUpper(locLanguage[0]) + locLanguage.Substring(1));
                     }
                     else
                     {

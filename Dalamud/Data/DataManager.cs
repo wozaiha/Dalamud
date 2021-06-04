@@ -275,6 +275,7 @@ namespace Dalamud.Data
                         ClientLanguage.English => Lumina.Data.Language.English,
                         ClientLanguage.German => Lumina.Data.Language.German,
                         ClientLanguage.French => Lumina.Data.Language.French,
+                        ClientLanguage.ChineseSimplified => Lumina.Data.Language.ChineseSimplified,
                         _ => throw new ArgumentOutOfRangeException(
                                  nameof(this.Language),
                                  @"Unknown Language: " + this.Language),

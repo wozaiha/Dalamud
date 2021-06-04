@@ -96,7 +96,7 @@ namespace Dalamud.Game.Command
                 command = content.Substring(0, separatorPosition);
 
                 var argStart = separatorPosition + 1;
-                argument = content[argStart..];
+                argument = content.Substring(argStart, content.Length - argStart);
             }
 
             if (!this.commandMap.TryGetValue(command, out var handler)) // Commad was not found.

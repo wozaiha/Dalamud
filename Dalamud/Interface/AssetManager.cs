@@ -16,6 +16,7 @@ namespace Dalamud.Interface
         private static readonly Dictionary<string, string> AssetDictionary = new Dictionary<string, string> {
             {AssetStoreUrl + "UIRes/serveropcode.json", "UIRes/serveropcode.json" },
             {AssetStoreUrl + "UIRes/clientopcode.json", "UIRes/clientopcode.json" },
+            {AssetStoreUrl + "UIRes/bannedplugin.json", "UIRes/bannedplugin.json" },
             {AssetStoreUrl + "UIRes/NotoSansCJKsc-Medium.otf", "UIRes/NotoSansCJKsc-Medium.otf" },
             {AssetStoreUrl + "UIRes/FontAwesome5FreeSolid.otf", "UIRes/FontAwesome5FreeSolid.otf" },
             {AssetStoreUrl + "UIRes/logo.png", "UIRes/logo.png" },
@@ -31,7 +32,7 @@ namespace Dalamud.Interface
         public static bool EnsureAssets(string baseDir) {
             using var client = new WebClient();
 
-            Log.Verbose("[ASSET] Starting asset download");
+            Log.Information("[ASSET] Starting asset download");
 
             var versionRes = CheckAssetRefreshNeeded(baseDir);
 
@@ -41,7 +42,7 @@ namespace Dalamud.Interface
                 Directory.CreateDirectory(Path.GetDirectoryName(filePath));
 
                 if (!File.Exists(filePath) || versionRes.isRefreshNeeded) {
-                    Log.Verbose("[ASSET] Downloading {0} to {1}...", entry.Key, entry.Value);
+                    Log.Information("[ASSET] Downloading {0} to {1}...", entry.Key, entry.Value);
                     try {
                         File.WriteAllBytes(filePath, client.DownloadData(entry.Key));
                     } catch (Exception ex) {
@@ -54,7 +55,7 @@ namespace Dalamud.Interface
             if (versionRes.isRefreshNeeded)
                 SetLocalAssetVer(baseDir, versionRes.version);
 
-            Log.Verbose("[ASSET] Assets OK");
+            Log.Information("[ASSET] Assets OK");
 
             return true;
         }

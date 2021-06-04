@@ -101,7 +101,7 @@ public class ScratchPlugin : IDalamudPlugin {
                     ctx = ParseContext.Hook;
 
                     var args = Regex.Match(line, "HOOK\\((.+)+\\):").Groups[0].Captures[0].Value
-                                    .Split(new[] { "," }, StringSplitOptions.RemoveEmptyEntries).Select(x => x[0] == ' ' ? x[1..] : x).ToArray();
+                                    .Split(new[] { "," }, StringSplitOptions.RemoveEmptyEntries).Select(x => x[0] == ' ' ? x.Substring(1) : x).ToArray();
 
                     tHook.Sig = args[0].Replace("\"", string.Empty); // Split quotation marks if any
                     tHook.Sig = tHook.Sig.Replace("HOOK(", string.Empty);

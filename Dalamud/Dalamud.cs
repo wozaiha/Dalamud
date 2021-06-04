@@ -191,7 +191,7 @@ namespace Dalamud
         /// <summary>
         /// Gets location of stored assets.
         /// </summary>
-        internal DirectoryInfo AssetDirectory => new DirectoryInfo(this.StartInfo.WorkingDirectory);
+        internal DirectoryInfo AssetDirectory => new(this.StartInfo.AssetDirectory); 
 
         /// <summary>
         /// Runs tier 1 of the Dalamud initialization process.
@@ -202,7 +202,7 @@ namespace Dalamud
             {
                 try
                 {
-                    var res = AssetManager.EnsureAssets(this.baseDirectory);
+                    var res = AssetManager.EnsureAssets(this.AssetDirectory.FullName);
                     if (!res)
                     {
                         Log.Error("One or more assets failed to download.");
