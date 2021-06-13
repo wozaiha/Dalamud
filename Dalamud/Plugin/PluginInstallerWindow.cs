@@ -110,7 +110,7 @@ namespace Dalamud.Plugin
             ImGui.InputTextWithHint("###XPlPluginInstaller_Search", Loc.Localize("InstallerSearch", "Search"), ref this.searchText, 100);
 
             ImGui.SameLine();
-            ImGui.SetNextItemWidth((10 * ImGui.GetIO().FontGlobalScale) + ImGui.CalcTextSize(Loc.Localize("SortDownloadCounts", "Download Count")).X);
+            ImGui.SetNextItemWidth((12 * ImGui.GetIO().FontGlobalScale) + ImGui.CalcTextSize(Loc.Localize("SortDownloadCounts", "Download Count")).X);
             if (ImGui.BeginCombo(Loc.Localize("PluginSort", "Sort By"), this.filterText, ImGuiComboFlags.NoArrowButton))
             {
                 if (ImGui.Selectable(Loc.Localize("SortAlphabetical", "Alphabetical")))

@@ -25,7 +25,7 @@ namespace Dalamud.Injector
             {
                 File.WriteAllText("InjectorException.txt", eventArgs.ExceptionObject.ToString());
 #if !DEBUG
-                MessageBox.Show("Failed to inject the XIVLauncher in-game addon.\nPlease try restarting your game and your PC.\nIf this keeps happening, please report this error.", "XIVLauncher Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("注入卫月框架失败。\n请尝试重启游戏与电脑。\n如果这个错误持续出现，请加入群内反馈。", "Dalamud Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 #else
                 MessageBox.Show("Couldn't inject.\nMake sure that Dalamud was not injected into your target process as a release build before and that the target process can be accessed with VM_WRITE permissions.\n\n" + eventArgs.ExceptionObject, "Debug Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 #endif
@@ -35,7 +35,8 @@ namespace Dalamud.Injector
             var pid = -1;
             if (args.Length >= 1)
             {
-                pid = int.Parse(args[0]);
+                pid = args[0].StartsWith("0x") ? Convert.ToInt32(args[0], 16) : int.Parse(args[0]);
+                Console.WriteLine($"Injecting PID: {pid}");
             }
 
             switch (pid)
@@ -190,7 +191,7 @@ namespace Dalamud.Injector
                 AssetDirectory = Path.Combine(Directory.GetCurrentDirectory(), "XIVLauncher", "dalamudAssets"),
 
                 GameVersion = File.ReadAllText(Path.Combine(ffxivDir, "ffxivgame.ver")),
-                Language = ClientLanguage.ChineseSimplified
+                Language = ClientLanguage.ChineseSimplified,
             };
 
             Console.WriteLine("Creating a StartInfo with:\n" +
