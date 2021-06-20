@@ -34,7 +34,7 @@ namespace Dalamud.Interface
             using var client = new WebClient();
             using var sha1 = SHA1.Create();
 
-            Log.Verbose("[DASSET] Starting asset download");
+            Log.Information("[DASSET] Starting asset download");
 
             var (isRefreshNeeded, info) = CheckAssetRefreshNeeded(baseDir);
 
@@ -56,7 +56,7 @@ namespace Dalamud.Interface
                         var fileHash = sha1.ComputeHash(file);
                         var stringHash = BitConverter.ToString(fileHash).Replace("-", string.Empty);
                         refreshFile = stringHash != entry.Hash;
-                        Log.Verbose("[DASSET] {0} has hash {1} when remote asset has {2}.", entry.FileName, stringHash, entry.Hash);
+                        Log.Information("[DASSET] {0} has hash {1} when remote asset has {2}.", entry.FileName, stringHash, entry.Hash);
                     }
                     catch (Exception ex)
                     {
@@ -66,7 +66,7 @@ namespace Dalamud.Interface
 
                 if (!File.Exists(filePath) || isRefreshNeeded || refreshFile)
                 {
-                    Log.Verbose("[DASSET] Downloading {0} to {1}...", entry.Url, entry.FileName);
+                    Log.Information("[DASSET] Downloading {0} to {1}...", entry.Url, entry.FileName);
                     try
                     {
                         File.WriteAllBytes(filePath, client.DownloadData(entry.Url));
@@ -82,7 +82,7 @@ namespace Dalamud.Interface
             if (isRefreshNeeded)
                 SetLocalAssetVer(baseDir, info.Version);
 
-            Log.Verbose("[DASSET] Assets OK");
+            Log.Information("[DASSET] Assets OK");
 
             return true;
         }
@@ -121,7 +121,7 @@ namespace Dalamud.Interface
 
                 var remoteVer = JsonConvert.DeserializeObject<AssetInfo>(client.DownloadString(ASSET_STORE_URL + "asset.json"));
 
-                Log.Verbose("[DASSET] Ver check - local:{0} remote:{1}", localVer, remoteVer.Version);
+                Log.Information("[DASSET] Ver check - local:{0} remote:{1}", localVer, remoteVer.Version);
 
                 var needsUpdate = remoteVer.Version > localVer;
 
