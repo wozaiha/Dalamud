@@ -4,98 +4,146 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using Serilog;
 
 namespace Dalamud.Interface
 {
-    class AssetManager {
-        private const string AssetStoreUrl = "https://dalamudassets-1253720819.cos.ap-nanjing.myqcloud.com/";
+    internal class AssetManager
+    {
+        private const string ASSET_STORE_URL = "https://dalamudassets-1253720819.cos.ap-nanjing.myqcloud.com/";
 
-        private static readonly Dictionary<string, string> AssetDictionary = new Dictionary<string, string> {
-            {AssetStoreUrl + "UIRes/serveropcode.json", "UIRes/serveropcode.json" },
-            {AssetStoreUrl + "UIRes/clientopcode.json", "UIRes/clientopcode.json" },
-            {AssetStoreUrl + "UIRes/bannedplugin.json", "UIRes/bannedplugin.json" },
-            {AssetStoreUrl + "UIRes/NotoSansCJKsc-Medium.otf", "UIRes/NotoSansCJKsc-Medium.otf" },
-            {AssetStoreUrl + "UIRes/FontAwesome5FreeSolid.otf", "UIRes/FontAwesome5FreeSolid.otf" },
-            {AssetStoreUrl + "UIRes/logo.png", "UIRes/logo.png" },
-            {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_de.json", "UIRes/loc/dalamud/dalamud_de.json" },
-            {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_es.json", "UIRes/loc/dalamud/dalamud_es.json" },
-            {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_fr.json", "UIRes/loc/dalamud/dalamud_fr.json" },
-            {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_it.json", "UIRes/loc/dalamud/dalamud_it.json" },
-            {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_ja.json", "UIRes/loc/dalamud/dalamud_ja.json" },
-            {AssetStoreUrl + "UIRes/loc/dalamud/dalamud_zh.json", "UIRes/loc/dalamud/dalamud_zh.json" },
-            {AssetStoreUrl + "UIRes/gamesym.ttf", "UIRes/gamesym.ttf" }
-        };
+        internal class AssetInfo
+        {
+            public int Version { get; set; }
+            public List<Asset> Assets { get; set; }
 
-        public static bool EnsureAssets(string baseDir) {
+            public class Asset
+            {
+                public string Url { get; set; }
+                public string FileName { get; set; }
+                public string Hash { get; set; }
+            }
+        }
+
+        public static bool EnsureAssets(DirectoryInfo baseDir)
+        {
             using var client = new WebClient();
+            using var sha1 = SHA1.Create();
 
-            Log.Information("[ASSET] Starting asset download");
+            Log.Verbose("[DASSET] Starting asset download");
 
-            var versionRes = CheckAssetRefreshNeeded(baseDir);
+            var (isRefreshNeeded, info) = CheckAssetRefreshNeeded(baseDir);
 
-            foreach (var entry in AssetDictionary) {
-                var filePath = Path.Combine(baseDir, entry.Value);
+            if (info == null)
+                return false;
+
+            foreach (var entry in info.Assets)
+            {
+                var filePath = Path.Combine(baseDir.FullName, entry.FileName);
 
                 Directory.CreateDirectory(Path.GetDirectoryName(filePath));
 
-                if (!File.Exists(filePath) || versionRes.isRefreshNeeded) {
-                    Log.Information("[ASSET] Downloading {0} to {1}...", entry.Key, entry.Value);
-                    try {
-                        File.WriteAllBytes(filePath, client.DownloadData(entry.Key));
-                    } catch (Exception ex) {
-                        Log.Error(ex, "[ASSET] Could not download asset.");
+                var refreshFile = false;
+                if (File.Exists(filePath) && !string.IsNullOrEmpty(entry.Hash))
+                {
+                    try
+                    {
+                        using var file = File.OpenRead(filePath);
+                        var fileHash = sha1.ComputeHash(file);
+                        var stringHash = BitConverter.ToString(fileHash).Replace("-", string.Empty);
+                        refreshFile = stringHash != entry.Hash;
+                        Log.Verbose("[DASSET] {0} has hash {1} when remote asset has {2}.", entry.FileName, stringHash, entry.Hash);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "[DASSET] Could not read asset.");
+                    }
+                }
+
+                if (!File.Exists(filePath) || isRefreshNeeded || refreshFile)
+                {
+                    Log.Verbose("[DASSET] Downloading {0} to {1}...", entry.Url, entry.FileName);
+                    try
+                    {
+                        File.WriteAllBytes(filePath, client.DownloadData(entry.Url));
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "[DASSET] Could not download asset.");
                         return false;
                     }
                 }
             }
 
-            if (versionRes.isRefreshNeeded)
-                SetLocalAssetVer(baseDir, versionRes.version);
+            if (isRefreshNeeded)
+                SetLocalAssetVer(baseDir, info.Version);
 
-            Log.Information("[ASSET] Assets OK");
+            Log.Verbose("[DASSET] Assets OK");
 
             return true;
         }
 
-        private static string GetAssetVerPath(string baseDir) => Path.Combine(baseDir, "asset.ver");
+        private static string GetAssetVerPath(DirectoryInfo baseDir)
+        {
+            return Path.Combine(baseDir.FullName, "asset.ver");
+        }
 
 
         /// <summary>
-        /// Check if an asset update is needed. When this fails, just return false - the route to github
-        /// might be bad, don't wanna just bail out in that case
+        ///     Check if an asset update is needed. When this fails, just return false - the route to github
+        ///     might be bad, don't wanna just bail out in that case
         /// </summary>
         /// <param name="baseDir">Base directory for assets</param>
         /// <returns>Update state</returns>
-        private static (bool isRefreshNeeded, int version) CheckAssetRefreshNeeded(string baseDir) {
+        private static (bool isRefreshNeeded, AssetInfo info) CheckAssetRefreshNeeded(DirectoryInfo baseDir)
+        {
             using var client = new WebClient();
 
-            try {
+            try
+            {
                 var localVerFile = GetAssetVerPath(baseDir);
                 var localVer = 0;
 
-                if (File.Exists(localVerFile))
-                    localVer = int.Parse(File.ReadAllText(localVerFile));
+                try
+                {
+                    if (File.Exists(localVerFile))
+                        localVer = int.Parse(File.ReadAllText(localVerFile));
+                }
+                catch (Exception ex)
+                {
+                    // This means it'll stay on 0, which will redownload all assets - good by me
+                    Log.Error(ex, "[DASSET] Could not read asset.ver");
+                }
 
-                var remoteVer = int.Parse(client.DownloadString(AssetStoreUrl + "asset.ver"));
+                var remoteVer = JsonConvert.DeserializeObject<AssetInfo>(client.DownloadString(ASSET_STORE_URL + "asset.json"));
 
-                Log.Verbose("[ASSET] Ver check - local:{0} remote:{1}", localVer, remoteVer);
+                Log.Verbose("[DASSET] Ver check - local:{0} remote:{1}", localVer, remoteVer.Version);
 
-                return remoteVer > localVer ? (true, remoteVer) : (false, localVer);
-            } catch (Exception e) {
-                Log.Error(e, "[ASSET] Could not check asset version");
-                return (false, 0);
+                var needsUpdate = remoteVer.Version > localVer;
+
+                return (needsUpdate, remoteVer);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "[DASSET] Could not check asset version");
+                return (false, null);
             }
         }
 
-        private static void SetLocalAssetVer(string baseDir, int version) {
-            try {
+        private static void SetLocalAssetVer(DirectoryInfo baseDir, int version)
+        {
+            try
+            {
                 var localVerFile = GetAssetVerPath(baseDir);
                 File.WriteAllText(localVerFile, version.ToString());
-            } catch (Exception e) {
-                Log.Error(e, "[ASSET] Could not write local asset version");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "[DASSET] Could not write local asset version");
             }
         }
     }

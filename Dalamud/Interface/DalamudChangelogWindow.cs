@@ -81,6 +81,18 @@ If you note any issues or need help, please make sure to ask on our discord serv
 
             ImGui.SameLine();
 
+            if (ImGui.Button(FontAwesomeIcon.LaughBeam.ToIconString()))
+                Process.Start("https://jq.qq.com/?_wv=1027&k=FQO1as0Y");
+
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.PopFont();
+                ImGui.SetTooltip("加入QQ群");
+                ImGui.PushFont(InterfaceManager.IconFont);
+            }
+
+            ImGui.SameLine();
+
             if (ImGui.Button(FontAwesomeIcon.Globe.ToIconString()))
                 Process.Start("https://github.com/goatcorp/FFXIVQuickLauncher");
 

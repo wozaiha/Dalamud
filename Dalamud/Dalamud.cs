@@ -202,7 +202,7 @@ namespace Dalamud
             {
                 try
                 {
-                    var res = AssetManager.EnsureAssets(this.AssetDirectory.FullName);
+                    var res = AssetManager.EnsureAssets(this.AssetDirectory);
                     if (!res)
                     {
                         Log.Error("One or more assets failed to download.");
