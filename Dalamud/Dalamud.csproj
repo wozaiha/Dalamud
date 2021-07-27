@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup Label="Target">
         <PlatformTarget>AnyCPU</PlatformTarget>
         <TargetFramework>net472</TargetFramework>
@@ -16,9 +16,9 @@
     <PropertyGroup Label="Feature">
         <DalamudVersion>5.2.6.1</DalamudVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <AssemblyVersion>$(DalamudVersion)</AssemblyVersion>
-        <Version>$(DalamudVersion)</Version>
-        <FileVersion>$(DalamudVersion)</FileVersion>
+        <AssemblyVersion>5.2.6.2</AssemblyVersion>
+        <Version>5.2.6.2</Version>
+        <FileVersion>5.2.6.2</FileVersion>
     </PropertyGroup>
     <ItemGroup Label="Resources">
         <None Include="$(SolutionDir)/Resources/**/*" CopyToOutputDirectory="PreserveNewest" Visible="false" />

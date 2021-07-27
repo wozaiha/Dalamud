@@ -79,6 +79,7 @@ namespace Dalamud.Game.Network.Universalis.MarketBoardUploaders
             }
 
             var upload = JsonConvert.SerializeObject(listingsRequestObject);
+            client.Encoding = System.Text.Encoding.UTF8;
             client.UploadString(ApiBase + $"/upload/{ApiKey}", "POST", upload);
             Log.Verbose(upload);
 
