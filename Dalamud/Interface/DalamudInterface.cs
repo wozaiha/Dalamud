@@ -190,6 +190,8 @@ namespace Dalamud.Interface
                                 if (ImGui.MenuItem(logLevel + "##logLevelSwitch", string.Empty, this.dalamud.LogLevelSwitch.MinimumLevel == logLevel))
                                 {
                                     this.dalamud.LogLevelSwitch.MinimumLevel = logLevel;
+                                    this.dalamud.Configuration.LogLevel = logLevel;
+                                    this.dalamud.Configuration.Save();
                                 }
                             }
 
@@ -198,7 +200,14 @@ namespace Dalamud.Interface
 
                         if (ImGui.MenuItem("Enable AntiDebug", null, this.dalamud.AntiDebug.IsEnabled))
                         {
-                            this.dalamud.AntiDebug.Enable();
+                            var newEnabled = !this.dalamud.AntiDebug.IsEnabled;
+                            if (newEnabled)
+                                this.dalamud.AntiDebug.Enable();
+                            else
+                                this.dalamud.AntiDebug.Disable();
+
+                            this.dalamud.Configuration.IsAntiAntiDebugEnabled = newEnabled;
+                            this.dalamud.Configuration.Save();
                         }
 
                         ImGui.Separator();

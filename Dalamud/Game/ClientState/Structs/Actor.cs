@@ -14,8 +14,8 @@ namespace Dalamud.Game.ClientState.Structs
         /// The actor name.
         /// </summary>
         [FieldOffset(ActorOffsets.Name)]
-        [MarshalAs(UnmanagedType.LPUTF8Str, SizeConst = 30)]
-        public string Name;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 30)]
+        public byte[] Name;
 
         /// <summary>
         /// The actor's internal id.
@@ -232,6 +232,12 @@ namespace Dalamud.Game.ClientState.Structs
         public float TotalCastTime;
 
         /// <summary>
+        /// Actor status flags.
+        /// </summary>
+        [FieldOffset(ActorOffsets.StatusFlags)]
+        public StatusFlags StatusFlags;
+
+        /// <summary>
         /// The array of status effects that the actor is currently affected by.
         /// </summary>
         [FieldOffset(ActorOffsets.UIStatusEffects)]
@@ -284,6 +290,7 @@ namespace Dalamud.Game.ClientState.Structs
         public const int CurrentCastTargetActorId = 0x1B70;
         public const int CurrentCastTime = 0x1B94;
         public const int TotalCastTime = 0x1B98;
+        public const int StatusFlags = 0x1980;
         public const int UIStatusEffects = 0x19D8;
     }
 }

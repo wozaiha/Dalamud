@@ -5,6 +5,7 @@ using System.IO;
 using Dalamud.Game.Text;
 using Newtonsoft.Json;
 using Serilog;
+using Serilog.Events;
 
 namespace Dalamud.Configuration
 {
@@ -12,7 +13,7 @@ namespace Dalamud.Configuration
     /// Class containing Dalamud settings.
     /// </summary>
     [Serializable]
-    internal class DalamudConfiguration
+    public class DalamudConfiguration
     {
         [JsonIgnore]
         private string configPath;
@@ -114,6 +115,11 @@ namespace Dalamud.Configuration
         public bool DoButtonsSystemMenu { get; set; } = true;
 
         /// <summary>
+        /// Gets or sets the default Dalamud debug log level on startup.
+        /// </summary>
+        public LogEventLevel LogLevel { get; set; } = LogEventLevel.Information;
+
+        /// <summary>
         /// Gets or sets a value indicating whether or not the debug log should scroll automatically.
         /// </summary>
         public bool LogAutoScroll { get; set; } = true;
@@ -137,6 +143,16 @@ namespace Dalamud.Configuration
         /// Gets or sets a value indicating whether or not navigation via a gamepad should be globally enabled in ImGui.
         /// </summary>
         public bool IsGamepadNavigationEnabled { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether or not the anti-anti-debug check is enabled on startup.
+        /// </summary>
+        public bool IsAntiAntiDebugEnabled { get; set; } = false;
+
+        /// <summary>
+        /// Specifies the kind of beta to download when <see cref="DoDalamudTest"/> is set to true.
+        /// </summary>
+        public string DalamudBetaKind { get; set; }
 
         /// <summary>
         /// Load a configuration from the provided path.
