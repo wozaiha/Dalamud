@@ -17,10 +17,11 @@ namespace Dalamud.Interface
         public const bool WarrantsChangelog = false;
 
         private const string ChangeLog =
-            @"* Various behind-the-scenes changes to improve stability
-* Faster startup times
+            @"* API更新以支持最新版插件，增加稳定性
+* 更快的启动速度
 
-If you note any issues or need help, please make sure to ask on our discord server.";
+如果您遇到了任何问题或者需要帮助，请加入我们的 Discord 或 QQ群 反馈问题。
+如果您在咸鱼小店等处付费获取卫月框架及其插件，请默念奸商司马。";
 
         private readonly Dalamud dalamud;
         private string assemblyVersion = Util.AssemblyVersion;
@@ -30,7 +31,7 @@ If you note any issues or need help, please make sure to ask on our discord serv
         /// </summary>
         /// <param name="dalamud">The Dalamud instance.</param>
         public DalamudChangelogWindow(Dalamud dalamud)
-            : base("What's new in XIVLauncher?", ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoResize)
+            : base("更新了什么？", ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoResize)
         {
             this.dalamud = dalamud;
 
@@ -42,16 +43,16 @@ If you note any issues or need help, please make sure to ask on our discord serv
         /// <inheritdoc/>
         public override void Draw()
         {
-            ImGui.Text($"The in-game addon has been updated to version D{this.assemblyVersion}.");
+            ImGui.Text($"卫月框架更新到了版本 D{this.assemblyVersion}。");
 
             ImGui.Dummy(new Vector2(10, 10) * ImGui.GetIO().FontGlobalScale);
 
-            ImGui.Text("The following changes were introduced:");
+            ImGui.Text("包含以下更新内容：");
             ImGui.Text(ChangeLog);
 
             ImGui.Dummy(new Vector2(10, 10) * ImGui.GetIO().FontGlobalScale);
 
-            ImGui.Text("Thank you for using our tools!");
+            ImGui.Text("感谢使用我们的工具！");
 
             ImGui.Dummy(new Vector2(10, 10) * ImGui.GetIO().FontGlobalScale);
 
@@ -63,7 +64,7 @@ If you note any issues or need help, please make sure to ask on our discord serv
             if (ImGui.IsItemHovered())
             {
                 ImGui.PopFont();
-                ImGui.SetTooltip("Open Plugin Installer");
+                ImGui.SetTooltip("打开插件管理器");
                 ImGui.PushFont(InterfaceManager.IconFont);
             }
 
@@ -75,7 +76,7 @@ If you note any issues or need help, please make sure to ask on our discord serv
             if (ImGui.IsItemHovered())
             {
                 ImGui.PopFont();
-                ImGui.SetTooltip("Join our Discord server");
+                ImGui.SetTooltip("加入我们的 Discord 服务器");
                 ImGui.PushFont(InterfaceManager.IconFont);
             }
 
@@ -94,12 +95,12 @@ If you note any issues or need help, please make sure to ask on our discord serv
             ImGui.SameLine();
 
             if (ImGui.Button(FontAwesomeIcon.Globe.ToIconString()))
-                Process.Start("https://github.com/goatcorp/FFXIVQuickLauncher");
+                Process.Start("https://github.com/Bluefissure/Dalamud");
 
             if (ImGui.IsItemHovered())
             {
                 ImGui.PopFont();
-                ImGui.SetTooltip("See our GitHub repository");
+                ImGui.SetTooltip("查看 GitHub 仓库");
                 ImGui.PushFont(InterfaceManager.IconFont);
             }
 
@@ -109,7 +110,7 @@ If you note any issues or need help, please make sure to ask on our discord serv
             ImGui.Dummy(new Vector2(20, 0) * ImGui.GetIO().FontGlobalScale);
             ImGui.SameLine();
 
-            if (ImGui.Button("Close"))
+            if (ImGui.Button("关闭"))
             {
                 this.IsOpen = false;
             }

@@ -57,6 +57,7 @@ namespace Dalamud.Interface
                         var stringHash = BitConverter.ToString(fileHash).Replace("-", string.Empty);
                         refreshFile = stringHash != entry.Hash;
                         Log.Information("[DASSET] {0} has hash {1} when remote asset has {2}.", entry.FileName, stringHash, entry.Hash);
+                        if (!refreshFile) continue;
                     }
                     catch (Exception ex)
                     {
