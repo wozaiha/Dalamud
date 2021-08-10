@@ -14,7 +14,7 @@ namespace Dalamud.Game.ClientState.Structs
         /// The actor name.
         /// </summary>
         [FieldOffset(ActorOffsets.Name)]
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 30)]
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 36)]
         public byte[] Name;
 
         /// <summary>
@@ -277,20 +277,20 @@ namespace Dalamud.Game.ClientState.Structs
         public const int Level = 483;                        // 0x01E3 Level
         public const int PlayerCharacterTargetActorId = 560; // 0x01F0 TargetID
 
-        public const int Customize = 0x1878;  // Needs verification
-        public const int CompanyTag = 0x1892;
-        public const int BattleNpcTargetActorId = 0x18B8;  // Needs verification
-        public const int NameId = 0x1920;  // Needs verification
-        public const int CurrentWorld = 0x193C;
-        public const int HomeWorld = 0x193E;
+        public const int Customize = 0x1898;  // Needs verification
+        public const int CompanyTag = 0x18B2;
+        public const int BattleNpcTargetActorId = 0x18D8;  // Needs verification
+        public const int NameId = 0x1940;  // Needs verification
+        public const int CurrentWorld = 0x195C;
+        public const int HomeWorld = 0x195E;
 
-        public const int IsCasting = 0x1B60;
-        public const int IsCasting2 = 0x1B62;
-        public const int CurrentCastSpellActionId = 0x1B64;
-        public const int CurrentCastTargetActorId = 0x1B70;
-        public const int CurrentCastTime = 0x1B94;
-        public const int TotalCastTime = 0x1B98;
-        public const int StatusFlags = 0x1980;
-        public const int UIStatusEffects = 0x19D8;
+        public const int IsCasting = 0x1B80;
+        public const int IsCasting2 = 0x1B82;
+        public const int CurrentCastSpellActionId = 0x1B84;
+        public const int CurrentCastTargetActorId = 0x1B90;
+        public const int CurrentCastTime = 0x1BB4;
+        public const int TotalCastTime = 0x1BB8;
+        public const int StatusFlags = 0x19A0;
+        public const int UIStatusEffects = 0x19F8;
     }
 }

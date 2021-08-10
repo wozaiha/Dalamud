@@ -14,13 +14,16 @@ namespace Dalamud.Interface
         /// <summary>
         /// Whether the latest update warrants a changelog window.
         /// </summary>
-        public const bool WarrantsChangelog = false;
+        public const bool WarrantsChangelog = true;
 
         private const string ChangeLog =
             @"* API更新以支持最新版插件，增加稳定性
 * 更快的启动速度
+* 支持国服 5.5 版本
+* 修正 Lumina 错误
 
-如果您遇到了任何问题或者需要帮助，请加入我们的 Discord 或 QQ群 反馈问题。
+如果您遇到了任何问题或者需要帮助，请加入我们的 Discord 或 QQ群 827725124 反馈问题。
+
 如果您在咸鱼小店等处付费获取卫月框架及其插件，请默念奸商司马。";
 
         private readonly Dalamud dalamud;

@@ -108,7 +108,7 @@ namespace Dalamud.Game.Internal.Gui
             this.GetUIObjectByName = sig.ScanText("E8 ?? ?? ?? ?? 48 8B CF 48 89 87 ?? ?? 00 00 E8 ?? ?? ?? ?? 41 B8 01 00 00 00");
             this.GetUIModule = sig.ScanText("E8 ?? ?? ?? ?? 48 8B C8 48 85 C0 75 2D");
 
-            var uiModuleVtableSig = sig.GetStaticAddressFromSig("48 8D 05 ?? ?? ?? ?? 4C 89 44 24 ?? 48 89 01");
+            var uiModuleVtableSig = sig.GetStaticAddressFromSig("48 8D 05 ?? ?? ?? ?? 4C 89 61 28");
             this.GetAgentModule = Marshal.ReadIntPtr(uiModuleVtableSig, 34 * IntPtr.Size);
         }
 
