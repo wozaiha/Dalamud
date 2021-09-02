@@ -238,7 +238,7 @@ namespace Dalamud.Injector
             else
             {
                 var ffxivDir = Path.GetDirectoryName(process.MainModule.FileName);
-                var appDataDir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var appDataDir = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "..");
                 var xivlauncherDir = Path.Combine(appDataDir, "XIVLauncher");
 
                 var gameVerStr = File.ReadAllText(Path.Combine(ffxivDir, "ffxivgame.ver"));
@@ -252,7 +252,7 @@ namespace Dalamud.Injector
                     DefaultPluginDirectory = Path.Combine(xivlauncherDir, "devPlugins"),
                     AssetDirectory = Path.Combine(xivlauncherDir, "dalamudAssets"),
                     GameVersion = gameVer,
-                    Language = ClientLanguage.English,
+                    Language = ClientLanguage.ChineseSimplified,
                     OptOutMbCollection = false,
                 };
 

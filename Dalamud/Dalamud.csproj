@@ -89,10 +89,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <AdditionalFiles Include="..\stylecop.json" />
-    </ItemGroup>
-
-    <ItemGroup>
         <Compile Update="Properties\Resources.Designer.cs">
             <DesignTime>True</DesignTime>
             <AutoGen>True</AutoGen>
@@ -146,4 +142,19 @@
         <!-- writes the attribute to the customAssemblyInfo file -->
         <WriteCodeFragment Language="C#" OutputFile="$(CustomAssemblyInfoFile)" AssemblyAttributes="@(AssemblyAttributes)" />
     </Target>
+    <ItemGroup>
+      <None Remove="C:\Users\z_y_p\.nuget\packages\reloaded.assembler\1.0.10\build\FASMX64.DLL" />
+    </ItemGroup>
+    <ItemGroup>
+      <None Remove="C:\Users\z_y_p\.nuget\packages\reloaded.assembler\1.0.10\build\FASM-LICENSE.TXT" />
+    </ItemGroup>
+    <ItemGroup>
+      <None Remove="C:\Users\z_y_p\.nuget\packages\reloaded.assembler\1.0.10\build\FASM.DLL" />
+    </ItemGroup>
+    <ItemGroup>
+      <None Remove="C:\Users\z_y_p\.nuget\packages\reloaded.assembler\1.0.10\build\Reloaded.Assembler.targets" />
+    </ItemGroup>
+    <ItemGroup>
+      <None Remove="C:\Users\z_y_p\.nuget\packages\reloaded.assembler\1.0.10\build\Reloaded.Assembler.targets" />
+    </ItemGroup>
 </Project>

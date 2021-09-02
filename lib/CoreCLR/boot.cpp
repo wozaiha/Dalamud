@@ -23,6 +23,13 @@ void ConsoleTeardown()
     FreeConsole();
 }
 
+std::wstring ExePath() {
+    TCHAR buffer[MAX_PATH] = { 0 };
+    GetModuleFileName(NULL, buffer, MAX_PATH);
+    std::wstring::size_type pos = std::wstring(buffer).find_last_of(L"\\/");
+    return std::wstring(buffer).substr(0, pos);
+}
+
 int InitializeClrAndGetEntryPoint(
     std::wstring runtimeconfig_path,
     std::wstring module_path,
@@ -52,6 +59,7 @@ int InitializeClrAndGetEntryPoint(
     }
     else
     {
+        /*
         result = SHGetKnownFolderPath(FOLDERID_RoamingAppData, KF_FLAG_DEFAULT, nullptr, &_appdata);
 
         if (result != 0)
@@ -59,9 +67,10 @@ int InitializeClrAndGetEntryPoint(
             printf("Error: Unable to get RoamingAppData path (err=%d)\n", result);
             return result;
         }
+        */
 
-        std::filesystem::path fs_app_data(_appdata);
-        dotnet_path = _wcsdup(fs_app_data.append("XIVLauncher").append("runtime").c_str());
+        std::filesystem::path fs_app_data(module_path);
+        dotnet_path = _wcsdup(fs_app_data.parent_path().append("..").append("XIVLauncher").append("runtime").c_str());
     }
 
     // =========================================================================== //
