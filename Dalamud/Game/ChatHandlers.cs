@@ -1,17 +1,23 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 using CheapLoc;
+using Dalamud.Configuration.Internal;
+using Dalamud.Data;
+using Dalamud.Game.Gui;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
-using Dalamud.Interface;
+using Dalamud.Interface.Internal;
+using Dalamud.Interface.Internal.Notifications;
+using Dalamud.IoC;
+using Dalamud.IoC.Internal;
+using Dalamud.Plugin.Internal;
+using Dalamud.Utility;
 using Serilog;
 
 namespace Dalamud.Game
@@ -19,41 +25,43 @@ namespace Dalamud.Game
     /// <summary>
     /// Chat events and public helper functions.
     /// </summary>
+    [PluginInterface]
+    [InterfaceVersion("1.0")]
     public class ChatHandlers
     {
-        private static readonly Dictionary<string, string> UnicodeToDiscordEmojiDict = new()
-        {
-            { "", "<:ffxive071:585847382210642069>" },
-            { "", "<:ffxive083:585848592699490329>" },
-        };
+        // private static readonly Dictionary<string, string> UnicodeToDiscordEmojiDict = new()
+        // {
+        //     { "", "<:ffxive071:585847382210642069>" },
+        //     { "", "<:ffxive083:585848592699490329>" },
+        // };
 
-        private readonly Dictionary<XivChatType, Color> handledChatTypeColors = new()
-        {
-            { XivChatType.CrossParty, Color.DodgerBlue },
-            { XivChatType.Party, Color.DodgerBlue },
-            { XivChatType.FreeCompany, Color.DeepSkyBlue },
-            { XivChatType.CrossLinkShell1, Color.ForestGreen },
-            { XivChatType.CrossLinkShell2, Color.ForestGreen },
-            { XivChatType.CrossLinkShell3, Color.ForestGreen },
-            { XivChatType.CrossLinkShell4, Color.ForestGreen },
-            { XivChatType.CrossLinkShell5, Color.ForestGreen },
-            { XivChatType.CrossLinkShell6, Color.ForestGreen },
-            { XivChatType.CrossLinkShell7, Color.ForestGreen },
-            { XivChatType.CrossLinkShell8, Color.ForestGreen },
-            { XivChatType.Ls1, Color.ForestGreen },
-            { XivChatType.Ls2, Color.ForestGreen },
-            { XivChatType.Ls3, Color.ForestGreen },
-            { XivChatType.Ls4, Color.ForestGreen },
-            { XivChatType.Ls5, Color.ForestGreen },
-            { XivChatType.Ls6, Color.ForestGreen },
-            { XivChatType.Ls7, Color.ForestGreen },
-            { XivChatType.Ls8, Color.ForestGreen },
-            { XivChatType.TellIncoming, Color.HotPink },
-            { XivChatType.PvPTeam, Color.SandyBrown },
-            { XivChatType.Urgent, Color.DarkViolet },
-            { XivChatType.NoviceNetwork, Color.SaddleBrown },
-            { XivChatType.Echo, Color.Gray },
-        };
+        // private readonly Dictionary<XivChatType, Color> handledChatTypeColors = new()
+        // {
+        //     { XivChatType.CrossParty, Color.DodgerBlue },
+        //     { XivChatType.Party, Color.DodgerBlue },
+        //     { XivChatType.FreeCompany, Color.DeepSkyBlue },
+        //     { XivChatType.CrossLinkShell1, Color.ForestGreen },
+        //     { XivChatType.CrossLinkShell2, Color.ForestGreen },
+        //     { XivChatType.CrossLinkShell3, Color.ForestGreen },
+        //     { XivChatType.CrossLinkShell4, Color.ForestGreen },
+        //     { XivChatType.CrossLinkShell5, Color.ForestGreen },
+        //     { XivChatType.CrossLinkShell6, Color.ForestGreen },
+        //     { XivChatType.CrossLinkShell7, Color.ForestGreen },
+        //     { XivChatType.CrossLinkShell8, Color.ForestGreen },
+        //     { XivChatType.Ls1, Color.ForestGreen },
+        //     { XivChatType.Ls2, Color.ForestGreen },
+        //     { XivChatType.Ls3, Color.ForestGreen },
+        //     { XivChatType.Ls4, Color.ForestGreen },
+        //     { XivChatType.Ls5, Color.ForestGreen },
+        //     { XivChatType.Ls6, Color.ForestGreen },
+        //     { XivChatType.Ls7, Color.ForestGreen },
+        //     { XivChatType.Ls8, Color.ForestGreen },
+        //     { XivChatType.TellIncoming, Color.HotPink },
+        //     { XivChatType.PvPTeam, Color.SandyBrown },
+        //     { XivChatType.Urgent, Color.DarkViolet },
+        //     { XivChatType.NoviceNetwork, Color.SaddleBrown },
+        //     { XivChatType.Echo, Color.Gray },
+        // };
 
         private readonly Regex rmtRegex = new(
                 @"4KGOLD|We have sufficient stock|VPK\.OM|Gil for free|www\.so9\.com|Fast & Convenient|Cheap & Safety Guarantee|【Code|A O A U E|igfans|4KGOLD\.COM|Cheapest Gil with|pvp and bank on google|Selling Cheap GIL|ff14mogstation\.com|Cheap Gil 1000k|gilsforyou|server 1000K =|gils_selling|E A S Y\.C O M|bonus code|mins delivery guarantee|Sell cheap|Salegm\.com|cheap Mog|Off Code:|FF14Mog.com|使用する5％オ|Off Code( *):|offers Fantasia",
@@ -102,53 +110,51 @@ namespace Dalamud.Game
 
         private readonly Regex urlRegex = new(@"(http|ftp|https)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?", RegexOptions.Compiled);
 
-        private readonly Dalamud dalamud;
-        private DalamudLinkPayload openInstallerWindowLink;
+        private readonly DalamudLinkPayload openInstallerWindowLink;
+
         private bool hasSeenLoadingMsg;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ChatHandlers"/> class.
         /// </summary>
-        /// <param name="dalamud">Dalamud instance.</param>
-        public ChatHandlers(Dalamud dalamud)
+        internal ChatHandlers()
         {
-            this.dalamud = dalamud;
+            var chatGui = Service<ChatGui>.Get();
 
-            dalamud.Framework.Gui.Chat.OnCheckMessageHandled += this.OnCheckMessageHandled;
-            dalamud.Framework.Gui.Chat.OnChatMessage += this.OnChatMessage;
+            chatGui.CheckMessageHandled += this.OnCheckMessageHandled;
+            chatGui.ChatMessage += this.OnChatMessage;
 
-            this.openInstallerWindowLink = this.dalamud.Framework.Gui.Chat.AddChatLinkHandler("Dalamud", 1001, (i, m) =>
+            this.openInstallerWindowLink = chatGui.AddChatLinkHandler("Dalamud", 1001, (i, m) =>
             {
-                this.dalamud.DalamudUi.OpenPluginInstaller();
+                Service<DalamudInterface>.Get().OpenPluginInstaller();
             });
         }
 
         /// <summary>
         /// Gets the last URL seen in chat.
         /// </summary>
-        public string LastLink { get; private set; }
+        public string? LastLink { get; private set; }
 
         /// <summary>
-        /// Convert a string to SeString and wrap in italics payloads.
+        /// Convert a TextPayload to SeString and wrap in italics payloads.
         /// </summary>
         /// <param name="text">Text to convert.</param>
         /// <returns>SeString payload of italicized text.</returns>
-        private static SeString MakeItalics(string text)
-        {
-            // TODO: when the code OnCharMessage is switched to SeString, this can be a straight insertion of the
-            // italics payloads only, and be a lot cleaner
-            var italicString = new SeString(new List<Payload>(new Payload[]
-            {
-                EmphasisItalicPayload.ItalicsOn,
-                new TextPayload(text),
-                EmphasisItalicPayload.ItalicsOff,
-            }));
+        public static SeString MakeItalics(string text)
+            => MakeItalics(new TextPayload(text));
 
-            return italicString;
-        }
+        /// <summary>
+        /// Convert a TextPayload to SeString and wrap in italics payloads.
+        /// </summary>
+        /// <param name="text">Text to convert.</param>
+        /// <returns>SeString payload of italicized text.</returns>
+        public static SeString MakeItalics(TextPayload text)
+            => new(EmphasisItalicPayload.ItalicsOn, text, EmphasisItalicPayload.ItalicsOff);
 
         private void OnCheckMessageHandled(XivChatType type, uint senderid, ref SeString sender, ref SeString message, ref bool isHandled)
         {
+            var configuration = Service<DalamudConfiguration>.Get();
+
             var textVal = message.TextValue;
 
             var matched = this.rmtRegex.IsMatch(textVal);
@@ -160,8 +166,8 @@ namespace Dalamud.Game
                 return;
             }
 
-            if (this.dalamud.Configuration.BadWords != null &&
-                this.dalamud.Configuration.BadWords.Any(x => !string.IsNullOrEmpty(x) && textVal.Contains(x)))
+            if (configuration.BadWords != null &&
+                configuration.BadWords.Any(x => !string.IsNullOrEmpty(x) && textVal.Contains(x)))
             {
                 // This seems to be in the user block list - let's not show it
                 Log.Debug("Blocklist triggered");
@@ -172,11 +178,14 @@ namespace Dalamud.Game
 
         private void OnChatMessage(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled)
         {
+            var startInfo = Service<DalamudStartInfo>.Get();
+            var clientState = Service<ClientState.ClientState>.Get();
+
             if (type == XivChatType.Notice && !this.hasSeenLoadingMsg)
                 this.PrintWelcomeMessage();
 
             // For injections while logged in
-            if (this.dalamud.ClientState.LocalPlayer != null && this.dalamud.ClientState.TerritoryType == 0 && !this.hasSeenLoadingMsg)
+            if (clientState.LocalPlayer != null && clientState.TerritoryType == 0 && !this.hasSeenLoadingMsg)
                 this.PrintWelcomeMessage();
 
 #if !DEBUG && false
@@ -186,7 +195,7 @@ namespace Dalamud.Game
 
             if (type == XivChatType.RetainerSale)
             {
-                foreach (var regex in this.retainerSaleRegexes[this.dalamud.StartInfo.Language])
+                foreach (var regex in this.retainerSaleRegexes[startInfo.Language])
                 {
                     var matchInfo = regex.Match(message.TextValue);
 
@@ -247,37 +256,42 @@ namespace Dalamud.Game
 
         private void PrintWelcomeMessage()
         {
+            var chatGui = Service<ChatGui>.Get();
+            var configuration = Service<DalamudConfiguration>.Get();
+            var pluginManager = Service<PluginManager>.Get();
+            var dalamudInterface = Service<DalamudInterface>.Get();
+            var notifications = Service<NotificationManager>.Get();
+
             var assemblyVersion = Assembly.GetAssembly(typeof(ChatHandlers)).GetName().Version.ToString();
 
-            this.dalamud.Framework.Gui.Chat.Print(string.Format(Loc.Localize("DalamudWelcome", "Dalamud vD{0} loaded."), assemblyVersion)
-                                                + string.Format(Loc.Localize("PluginsWelcome", " {0} plugin(s) loaded."), this.dalamud.PluginManager.Plugins.Count));
+            chatGui.Print(string.Format(Loc.Localize("DalamudWelcome", "Dalamud vD{0} loaded."), assemblyVersion)
+                        + string.Format(Loc.Localize("PluginsWelcome", " {0} plugin(s) loaded."), pluginManager.InstalledPlugins.Count));
 
-            if (this.dalamud.Configuration.PrintPluginsWelcomeMsg)
+            if (configuration.PrintPluginsWelcomeMsg)
             {
-                foreach (var plugin in this.dalamud.PluginManager.Plugins.OrderBy(x => x.Plugin.Name))
+                foreach (var plugin in pluginManager.InstalledPlugins.OrderBy(plugin => plugin.Name))
                 {
-                    this.dalamud.Framework.Gui.Chat.Print(string.Format(Loc.Localize("DalamudPluginLoaded", "    》 {0} v{1} loaded."), plugin.Plugin.Name, plugin.Definition.AssemblyVersion));
+                    chatGui.Print(string.Format(Loc.Localize("DalamudPluginLoaded", "    》 {0} v{1} loaded."), plugin.Name, plugin.Manifest.AssemblyVersion));
                 }
             }
 
-            if (string.IsNullOrEmpty(this.dalamud.Configuration.LastVersion) || !assemblyVersion.StartsWith(this.dalamud.Configuration.LastVersion))
+            if (string.IsNullOrEmpty(configuration.LastVersion) || !assemblyVersion.StartsWith(configuration.LastVersion))
             {
-                this.dalamud.Framework.Gui.Chat.PrintChat(new XivChatEntry
+                chatGui.PrintChat(new XivChatEntry
                 {
-                    MessageBytes = Encoding.UTF8.GetBytes(Loc.Localize("DalamudUpdated", "The In-Game addon has been updated or was reinstalled successfully! Please check the discord for a full changelog.")),
+                    Message = Loc.Localize("DalamudUpdated", "The In-Game addon has been updated or was reinstalled successfully! Please check the discord for a full changelog."),
                     Type = XivChatType.Notice,
                 });
 
-                if (DalamudChangelogWindow.WarrantsChangelog)
-#pragma warning disable CS0162 // Unreachable code detected
-                    this.dalamud.DalamudUi.OpenChangelog();
-#pragma warning restore CS0162 // Unreachable code detected
+                if (dalamudInterface.WarrantsChangelog)
+                    dalamudInterface.OpenChangelogWindow();
 
-                this.dalamud.Configuration.LastVersion = assemblyVersion;
-                this.dalamud.Configuration.Save();
+                configuration.LastVersion = assemblyVersion;
+                configuration.Save();
             }
 
-            Task.Run(() => this.dalamud.PluginRepository.UpdatePlugins(!this.dalamud.Configuration.AutoUpdatePlugins)).ContinueWith(t =>
+            Task.Run(() => pluginManager.UpdatePluginsAsync(!configuration.AutoUpdatePlugins))
+                .ContinueWith(t =>
             {
                 if (t.IsFaulted)
                 {
@@ -285,29 +299,32 @@ namespace Dalamud.Game
                 }
                 else
                 {
-                    var updatedPlugins = t.Result.UpdatedPlugins;
+                    var updatedPlugins = t.Result;
 
                     if (updatedPlugins != null && updatedPlugins.Any())
                     {
-                        if (this.dalamud.Configuration.AutoUpdatePlugins)
+                        if (configuration.AutoUpdatePlugins)
                         {
-                            this.dalamud.PluginRepository.PrintUpdatedPlugins(updatedPlugins, Loc.Localize("DalamudPluginAutoUpdate", "Auto-update:"));
+                            pluginManager.PrintUpdatedPlugins(updatedPlugins, Loc.Localize("DalamudPluginAutoUpdate", "Auto-update:"));
+                            notifications.AddNotification(Loc.Localize("NotificationUpdatedPlugins", "{0} of your plugins were updated.").Format(updatedPlugins.Count), Loc.Localize("NotificationAutoUpdate", "Auto-Update"), NotificationType.Info);
                         }
                         else
                         {
-                            this.dalamud.Framework.Gui.Chat.PrintChat(new XivChatEntry
+                            var data = Service<DataManager>.Get();
+
+                            chatGui.PrintChat(new XivChatEntry
                             {
-                                MessageBytes = new SeString(new List<Payload>()
+                                Message = new SeString(new List<Payload>()
                                 {
                                     new TextPayload(Loc.Localize("DalamudPluginUpdateRequired", "One or more of your plugins needs to be updated. Please use the /xlplugins command in-game to update them!")),
                                     new TextPayload("  ["),
-                                    new UIForegroundPayload(this.dalamud.Data, 500),
+                                    new UIForegroundPayload(500),
                                     this.openInstallerWindowLink,
                                     new TextPayload(Loc.Localize("DalamudInstallerHelp", "Open the plugin installer")),
                                     RawPayload.LinkTerminator,
-                                    new UIForegroundPayload(this.dalamud.Data, 0),
+                                    new UIForegroundPayload(0),
                                     new TextPayload("]"),
-                                }).Encode(),
+                                }),
                                 Type = XivChatType.Urgent,
                             });
                         }

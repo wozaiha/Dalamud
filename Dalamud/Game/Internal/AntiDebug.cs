@@ -8,7 +8,7 @@ namespace Dalamud.Game.Internal
     /// <summary>
     /// This class disables anti-debug functionality in the game client.
     /// </summary>
-    public sealed partial class AntiDebug
+    internal sealed partial class AntiDebug
     {
         private readonly byte[] nop = new byte[] { 0x31, 0xC0, 0x90, 0x90, 0x90, 0x90 };
         private byte[] original;
@@ -17,9 +17,10 @@ namespace Dalamud.Game.Internal
         /// <summary>
         /// Initializes a new instance of the <see cref="AntiDebug"/> class.
         /// </summary>
-        /// <param name="scanner">The SigScanner instance.</param>
-        public AntiDebug(SigScanner scanner)
+        public AntiDebug()
         {
+            var scanner = Service<SigScanner>.Get();
+
             try
             {
                 this.debugCheckAddress = scanner.ScanText("FF 15 ?? ?? ?? ?? 85 C0 74 11 41");
@@ -29,7 +30,7 @@ namespace Dalamud.Game.Internal
                 this.debugCheckAddress = IntPtr.Zero;
             }
 
-            Log.Verbose("DebugCheck address {DebugCheckAddress}", this.debugCheckAddress);
+            Log.Verbose($"Debug check address 0x{this.debugCheckAddress.ToInt64():X}");
         }
 
         /// <summary>
@@ -45,7 +46,7 @@ namespace Dalamud.Game.Internal
             this.original = new byte[this.nop.Length];
             if (this.debugCheckAddress != IntPtr.Zero && !this.IsEnabled)
             {
-                Log.Information($"Overwriting debug check @ 0x{this.debugCheckAddress.ToInt64():X}");
+                Log.Information($"Overwriting debug check at 0x{this.debugCheckAddress.ToInt64():X}");
                 SafeMemory.ReadBytes(this.debugCheckAddress, this.nop.Length, out this.original);
                 SafeMemory.WriteBytes(this.debugCheckAddress, this.nop);
             }
@@ -64,7 +65,7 @@ namespace Dalamud.Game.Internal
         {
             if (this.debugCheckAddress != IntPtr.Zero && this.original != null)
             {
-                Log.Information($"Reverting debug check @ 0x{this.debugCheckAddress.ToInt64():X}");
+                Log.Information($"Reverting debug check at 0x{this.debugCheckAddress.ToInt64():X}");
                 SafeMemory.WriteBytes(this.debugCheckAddress, this.original);
             }
             else
@@ -79,7 +80,7 @@ namespace Dalamud.Game.Internal
     /// <summary>
     /// Implementing IDisposable.
     /// </summary>
-    public sealed partial class AntiDebug : IDisposable
+    internal sealed partial class AntiDebug : IDisposable
     {
         private bool disposed = false;
 
@@ -110,9 +111,11 @@ namespace Dalamud.Game.Internal
             {
                 // If anti-debug is enabled and is being disposed, odds are either the game is exiting, or Dalamud is being reloaded.
                 // If it is the latter, there's half a chance a debugger is currently attached. There's no real need to disable the
-                // check in either situation anyways.
-                // this.Disable();
+                // check in either situation anyways. However if Dalamud is being reloaded, the sig may fail so may as well undo it.
+                this.Disable();
             }
+
+            this.disposed = true;
         }
     }
 }

@@ -1,9 +1,6 @@
 using System;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
-
-using JetBrains.Annotations;
 
 namespace Dalamud
 {
@@ -17,12 +14,10 @@ namespace Dalamud
     public static class SafeMemory
     {
         private static readonly IntPtr Handle;
-        private static readonly IntPtr MainModule;
 
         static SafeMemory()
         {
             Handle = Imports.GetCurrentProcess();
-            MainModule = Process.GetCurrentProcess().MainModule?.BaseAddress ?? IntPtr.Zero;
         }
 
         /// <summary>
@@ -78,8 +73,7 @@ namespace Dalamud
         /// <param name="address">The address to read from.</param>
         /// <param name="count">The length of the array.</param>
         /// <returns>An array of the read objects, or null if any entry of the array failed to read.</returns>
-        [CanBeNull]
-        public static T[] Read<T>(IntPtr address, int count) where T : struct
+        public static T[]? Read<T>(IntPtr address, int count) where T : struct
         {
             var size = SizeOf<T>();
             if (!ReadBytes(address, count * size, out var buffer))
@@ -135,8 +129,7 @@ namespace Dalamud
         /// <param name="address">The address to read from.</param>
         /// <param name="maxLength">The maximum length of the string.</param>
         /// <returns>The read string, or null in case the read was not successful.</returns>
-        [CanBeNull]
-        public static string ReadString(IntPtr address, int maxLength = 256)
+        public static string? ReadString(IntPtr address, int maxLength = 256)
         {
             return ReadString(address, Encoding.UTF8, maxLength);
         }
@@ -153,8 +146,7 @@ namespace Dalamud
         /// <param name="encoding">The encoding to use to decode the string.</param>
         /// <param name="maxLength">The maximum length of the string.</param>
         /// <returns>The read string, or null in case the read was not successful.</returns>
-        [CanBeNull]
-        public static string ReadString(IntPtr address, Encoding encoding, int maxLength = 256)
+        public static string? ReadString(IntPtr address, Encoding encoding, int maxLength = 256)
         {
             if (!ReadBytes(address, maxLength, out var buffer))
                 return null;

@@ -7,7 +7,7 @@ namespace Dalamud.Configuration
     /// <summary>
     /// Configuration to store settings for a dalamud plugin.
     /// </summary>
-    public class PluginConfigurations
+    public sealed class PluginConfigurations
     {
         private readonly DirectoryInfo configDirectory;
 
@@ -44,7 +44,7 @@ namespace Dalamud.Configuration
         /// </summary>
         /// <param name="pluginName">Plugin name.</param>
         /// <returns>Plugin configuration.</returns>
-        public IPluginConfiguration Load(string pluginName)
+        public IPluginConfiguration? Load(string pluginName)
         {
             var path = this.GetConfigFile(pluginName);
 
@@ -58,6 +58,22 @@ namespace Dalamud.Configuration
                     TypeNameAssemblyFormatHandling = TypeNameAssemblyFormatHandling.Simple,
                     TypeNameHandling = TypeNameHandling.Objects,
                 });
+        }
+
+        /// <summary>
+        /// Delete the configuration file and folder for the specified plugin.
+        /// This will throw an <see cref="IOException"/> if the plugin did not correctly close its handles.
+        /// </summary>
+        /// <param name="pluginName">The name of the plugin.</param>
+        public void Delete(string pluginName)
+        {
+            var directory = this.GetDirectoryPath(pluginName);
+            if (directory.Exists)
+                directory.Delete(true);
+
+            var file = this.GetConfigFile(pluginName);
+            if (file.Exists)
+                file.Delete();
         }
 
         /// <summary>

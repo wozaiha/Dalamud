@@ -1,13 +1,19 @@
 using System;
-using System.ComponentModel;
 using System.Runtime.InteropServices;
 
-using Dalamud.Game.ClientState.Actors;
-using Dalamud.Game.ClientState.Actors.Types;
-using Dalamud.Game.Internal;
+using Dalamud.Game.ClientState.Buddy;
+using Dalamud.Game.ClientState.Conditions;
+using Dalamud.Game.ClientState.Fates;
+using Dalamud.Game.ClientState.GamePad;
+using Dalamud.Game.ClientState.JobGauge;
+using Dalamud.Game.ClientState.Keys;
+using Dalamud.Game.ClientState.Objects;
+using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Game.ClientState.Party;
+using Dalamud.Game.Network.Internal;
 using Dalamud.Hooking;
-using JetBrains.Annotations;
-using Lumina.Excel.GeneratedSheets;
+using Dalamud.IoC;
+using Dalamud.IoC.Internal;
 using Serilog;
 
 namespace Dalamud.Game.ClientState
@@ -15,59 +21,10 @@ namespace Dalamud.Game.ClientState
     /// <summary>
     /// This class represents the state of the game client at the time of access.
     /// </summary>
-    public class ClientState : INotifyPropertyChanged, IDisposable
+    [PluginInterface]
+    [InterfaceVersion("1.0")]
+    public sealed class ClientState : IDisposable
     {
-        /// <summary>
-        /// The table of all present actors.
-        /// </summary>
-        public readonly ActorTable Actors;
-
-        /// <summary>
-        /// Gets the language of the client.
-        /// </summary>
-        public readonly ClientLanguage ClientLanguage;
-
-        /// <summary>
-        /// The current Territory the player resides in.
-        /// </summary>
-        public ushort TerritoryType;
-
-        /// <summary>
-        /// The class facilitating Job Gauge data access.
-        /// </summary>
-        public JobGauges JobGauges;
-
-        /// <summary>
-        /// The class facilitating party list data access.
-        /// </summary>
-        public PartyList PartyList;
-
-        /// <summary>
-        /// Provides access to the keypress state of keyboard keys in game.
-        /// </summary>
-        public KeyState KeyState;
-
-        /// <summary>
-        /// Provides access to the button state of gamepad buttons in game.
-        /// </summary>
-        public GamepadState GamepadState;
-
-        /// <summary>
-        /// Provides access to client conditions/player state. Allows you to check if a player is in a duty, mounted, etc.
-        /// </summary>
-        public Condition Condition;
-
-        /// <summary>
-        /// The class facilitating target data access.
-        /// </summary>
-        public Targets Targets;
-
-        /// <summary>
-        /// Event that gets fired when the current Territory changes.
-        /// </summary>
-        public EventHandler<ushort> TerritoryChanged;
-
-        private readonly Dalamud dalamud;
         private readonly ClientStateAddressResolver address;
         private readonly Hook<SetupTerritoryTypeDelegate> setupTerritoryTypeHook;
 
@@ -77,82 +34,81 @@ namespace Dalamud.Game.ClientState
         /// Initializes a new instance of the <see cref="ClientState"/> class.
         /// Set up client state access.
         /// </summary>
-        /// <param name="dalamud">Dalamud instance.</param>
-        /// <param name="startInfo">StartInfo of the current Dalamud launch.</param>
-        /// <param name="scanner">Sig scanner.</param>
-        public ClientState(Dalamud dalamud, DalamudStartInfo startInfo, SigScanner scanner)
+        internal ClientState()
         {
-            this.dalamud = dalamud;
             this.address = new ClientStateAddressResolver();
-            this.address.Setup(scanner);
+            this.address.Setup();
 
             Log.Verbose("===== C L I E N T  S T A T E =====");
 
-            this.ClientLanguage = startInfo.Language;
+            this.ClientLanguage = Service<DalamudStartInfo>.Get().Language;
 
-            this.Actors = new ActorTable(dalamud, this.address);
+            Service<ObjectTable>.Set(this.address);
 
-            this.PartyList = new PartyList(dalamud, this.address);
+            Service<FateTable>.Set(this.address);
 
-            this.JobGauges = new JobGauges(this.address);
+            Service<PartyList>.Set(this.address);
 
-            this.KeyState = new KeyState(this.address, scanner.Module.BaseAddress);
+            Service<BuddyList>.Set(this.address);
 
-            this.GamepadState = new GamepadState(this.address);
+            Service<JobGauges>.Set(this.address);
 
-            this.Condition = new Condition(this.address);
+            Service<KeyState>.Set(this.address);
 
-            this.Targets = new Targets(dalamud, this.address);
+            Service<GamepadState>.Set(this.address);
 
-            Log.Verbose("SetupTerritoryType address {SetupTerritoryType}", this.address.SetupTerritoryType);
+            Service<Condition>.Set(this.address);
+
+            Service<TargetManager>.Set(this.address);
+
+            Log.Verbose($"SetupTerritoryType address 0x{this.address.SetupTerritoryType.ToInt64():X}");
 
             this.setupTerritoryTypeHook = new Hook<SetupTerritoryTypeDelegate>(this.address.SetupTerritoryType, this.SetupTerritoryTypeDetour);
 
-            dalamud.Framework.OnUpdateEvent += this.FrameworkOnOnUpdateEvent;
-            dalamud.NetworkHandlers.CfPop += this.NetworkHandlersOnCfPop;
+            var framework = Service<Framework>.Get();
+            framework.Update += this.FrameworkOnOnUpdateEvent;
+
+            var networkHandlers = Service<NetworkHandlers>.Get();
+            networkHandlers.CfPop += this.NetworkHandlersOnCfPop;
         }
 
         [UnmanagedFunctionPointer(CallingConvention.ThisCall)]
         private delegate IntPtr SetupTerritoryTypeDelegate(IntPtr manager, ushort terriType);
 
         /// <summary>
-        /// Event that fires when a property changes.
+        /// Event that gets fired when the current Territory changes.
         /// </summary>
-#pragma warning disable CS0067
-        public event PropertyChangedEventHandler PropertyChanged;
-#pragma warning restore
+        public event EventHandler<ushort> TerritoryChanged;
 
         /// <summary>
         /// Event that fires when a character is logging in.
         /// </summary>
-        public event EventHandler OnLogin;
+        public event EventHandler Login;
 
         /// <summary>
         /// Event that fires when a character is logging out.
         /// </summary>
-        public event EventHandler OnLogout;
+        public event EventHandler Logout;
 
         /// <summary>
         /// Event that gets fired when a duty is ready.
         /// </summary>
-        public event EventHandler<ContentFinderCondition> CfPop;
+        public event EventHandler<Lumina.Excel.GeneratedSheets.ContentFinderCondition> CfPop;
+
+        /// <summary>
+        /// Gets the language of the client.
+        /// </summary>
+        public ClientLanguage ClientLanguage { get; }
+
+        /// <summary>
+        /// Gets the current Territory the player resides in.
+        /// </summary>
+        public ushort TerritoryType { get; private set; }
 
         /// <summary>
         /// Gets the local player character, if one is present.
         /// </summary>
-        [CanBeNull]
-        public PlayerCharacter LocalPlayer
-        {
-            get
-            {
-                var actor = this.Actors[0];
-
-                if (actor is PlayerCharacter pc)
-                    return pc;
-
-                return null;
-            }
-        }
+        public PlayerCharacter? LocalPlayer => Service<ObjectTable>.Get()[0] as PlayerCharacter;
 
         /// <summary>
         /// Gets the content ID of the local character.
@@ -169,8 +125,7 @@ namespace Dalamud.Game.ClientState
         /// </summary>
         public void Enable()
         {
-            this.GamepadState.Enable();
-            this.PartyList.Enable();
+            Service<GamepadState>.Get().Enable();
             this.setupTerritoryTypeHook.Enable();
         }
 
@@ -179,13 +134,10 @@ namespace Dalamud.Game.ClientState
         /// </summary>
         public void Dispose()
         {
-            this.PartyList.Dispose();
             this.setupTerritoryTypeHook.Dispose();
-            this.Actors.Dispose();
-            this.GamepadState.Dispose();
-
-            this.dalamud.Framework.OnUpdateEvent -= this.FrameworkOnOnUpdateEvent;
-            this.dalamud.NetworkHandlers.CfPop += this.NetworkHandlersOnCfPop;
+            Service<GamepadState>.Get().Dispose();
+            Service<Framework>.Get().Update -= this.FrameworkOnOnUpdateEvent;
+            Service<NetworkHandlers>.Get().CfPop -= this.NetworkHandlersOnCfPop;
         }
 
         private IntPtr SetupTerritoryTypeDetour(IntPtr manager, ushort terriType)
@@ -198,27 +150,28 @@ namespace Dalamud.Game.ClientState
             return this.setupTerritoryTypeHook.Original(manager, terriType);
         }
 
-        private void NetworkHandlersOnCfPop(object sender, ContentFinderCondition e)
+        private void NetworkHandlersOnCfPop(object sender, Lumina.Excel.GeneratedSheets.ContentFinderCondition e)
         {
             this.CfPop?.Invoke(this, e);
         }
 
         private void FrameworkOnOnUpdateEvent(Framework framework)
         {
-            if (this.Condition.Any() && this.lastConditionNone == true)
+            var condition = Service<Condition>.Get();
+            if (condition.Any() && this.lastConditionNone == true)
             {
                 Log.Debug("Is login");
                 this.lastConditionNone = false;
                 this.IsLoggedIn = true;
-                this.OnLogin?.Invoke(this, null);
+                this.Login?.Invoke(this, null);
             }
 
-            if (!this.Condition.Any() && this.lastConditionNone == false)
+            if (!condition.Any() && this.lastConditionNone == false)
             {
                 Log.Debug("Is logout");
                 this.lastConditionNone = true;
                 this.IsLoggedIn = false;
-                this.OnLogout?.Invoke(this, null);
+                this.Logout?.Invoke(this, null);
             }
         }
     }

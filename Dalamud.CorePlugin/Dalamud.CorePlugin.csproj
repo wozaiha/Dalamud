@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <AssemblyName>Dalamud.CorePlugin</AssemblyName>
+        <TargetFramework>net5.0-windows</TargetFramework>
+        <Platforms>x64</Platforms>
+        <LangVersion>9.0</LangVersion>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <NoWarn>IDE0003</NoWarn>
+    </PropertyGroup>
+
+    <PropertyGroup Label="Documentation">
+        <DocumentationFile></DocumentationFile>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+
+    <PropertyGroup Label="Build">
+        <OutputPath>$(AppData)\XIVLauncher\devPlugins\Dalamud.CorePlugin</OutputPath>
+        <DebugSymbols>true</DebugSymbols>
+        <DebugType>full</DebugType>
+        <Optimize>false</Optimize>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <AdditionalFiles Include="..\stylecop.json" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Lumina" Version="3.3.0" />
+        <PackageReference Include="Lumina.Excel" Version="5.50.0" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+        <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.333">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Dalamud\Dalamud.csproj">
+            <Private>false</Private>
+        </ProjectReference>
+        <ProjectReference Include="..\lib\ImGuiScene\deps\ImGui.NET\src\ImGui.NET-472\ImGui.NET-472.csproj">
+            <Private>false</Private>
+        </ProjectReference>
+        <ProjectReference Include="..\lib\ImGuiScene\ImGuiScene\ImGuiScene.csproj">
+            <Private>false</Private>
+        </ProjectReference>
+        <ProjectReference Include="..\lib\ImGuiScene\deps\SDL2-CS\SDL2-CS.csproj">
+            <Private>false</Private>
+        </ProjectReference>
+    </ItemGroup>
+</Project>

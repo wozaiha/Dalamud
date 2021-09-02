@@ -1,9 +1,9 @@
 using System;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
-using EasyHook;
+using Dalamud.Hooking.Internal;
+using Dalamud.Memory;
+using Reloaded.Hooks;
 
 namespace Dalamud.Hooking
 {
@@ -15,10 +15,7 @@ namespace Dalamud.Hooking
     public sealed class Hook<T> : IDisposable, IDalamudHook where T : Delegate
     {
         private readonly IntPtr address;
-
-        private readonly T original;
-
-        private readonly LocalHook hookInfo;
+        private readonly Reloaded.Hooks.Definitions.IHook<T> hookImpl;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Hook{T}"/> class.
@@ -28,23 +25,19 @@ namespace Dalamud.Hooking
         /// <param name="detour">Callback function. Delegate must have a same original function prototype.</param>
         public Hook(IntPtr address, T detour)
         {
-            this.hookInfo = LocalHook.Create(address, detour, null); // Installs a hook here
-            this.address = address;
-            this.original = Marshal.GetDelegateForFunctionPointer<T>(this.hookInfo.HookBypassAddress);
-            HookInfo.TrackedHooks.Add(new HookInfo() { Delegate = detour, Hook = this, Assembly = Assembly.GetCallingAssembly() });
-        }
+            address = HookManager.FollowJmp(address);
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="Hook{T}"/> class.
-        /// Hook is not activated until Enable() method is called.
-        /// </summary>
-        /// <param name="address">A memory address to install a hook.</param>
-        /// <param name="detour">Callback function. Delegate must have a same original function prototype.</param>
-        /// <param name="callbackParam">A callback object which can be accessed within the detour.</param>
-        [Obsolete("There is no need to specify new YourDelegateType or callbackParam", true)]
-        public Hook(IntPtr address, Delegate detour, object callbackParam = null)
-            : this(address, detour as T)
-        {
+            var hasOtherHooks = HookManager.Originals.ContainsKey(address);
+            if (!hasOtherHooks)
+            {
+                MemoryHelper.ReadRaw(address, 0x32, out var original);
+                HookManager.Originals[address] = original;
+            }
+
+            this.address = address;
+            this.hookImpl = ReloadedHooks.Instance.CreateHook<T>(detour, address.ToInt64());
+
+            HookManager.TrackedHooks.Add(new HookInfo(this, detour, Assembly.GetCallingAssembly()));
         }
 
         /// <summary>
@@ -53,7 +46,6 @@ namespace Dalamud.Hooking
         /// <exception cref="ObjectDisposedException">Hook is already disposed.</exception>
         public IntPtr Address
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 this.CheckDisposed();
@@ -67,11 +59,10 @@ namespace Dalamud.Hooking
         /// <exception cref="ObjectDisposedException">Hook is already disposed.</exception>
         public T Original
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 this.CheckDisposed();
-                return this.original;
+                return this.hookImpl.OriginalFunction;
             }
         }
 
@@ -83,7 +74,7 @@ namespace Dalamud.Hooking
             get
             {
                 this.CheckDisposed();
-                return this.hookInfo.ThreadACL.IsExclusive;
+                return this.hookImpl.IsHookEnabled;
             }
         }
 
@@ -94,7 +85,7 @@ namespace Dalamud.Hooking
 
         /// <summary>
         /// Creates a hook. Hooking address is inferred by calling to GetProcAddress() function.
-        /// Hook is not activated until Enable() method is called.
+        /// The hook is not activated until Enable() method is called.
         /// </summary>
         /// <param name="moduleName">A name of the module currently loaded in the memory. (e.g. ws2_32.dll).</param>
         /// <param name="exportName">A name of the exported function name (e.g. send).</param>
@@ -102,23 +93,16 @@ namespace Dalamud.Hooking
         /// <returns>The hook with the supplied parameters.</returns>
         public static Hook<T> FromSymbol(string moduleName, string exportName, T detour)
         {
-            // Get a function address from the symbol name.
-            var address = LocalHook.GetProcAddress(moduleName, exportName);
+            var moduleHandle = NativeFunctions.GetModuleHandleW(moduleName);
+            if (moduleHandle == IntPtr.Zero)
+                throw new Exception($"Could not get a handle to module {moduleName}");
 
-            return new Hook<T>(address, detour);
+            var procAddress = NativeFunctions.GetProcAddress(moduleHandle, exportName);
+            if (procAddress == IntPtr.Zero)
+                throw new Exception($"Could not get the address of {moduleName}::{exportName}");
+
+            return new Hook<T>(procAddress, detour);
         }
-
-        /// <summary>
-        /// Creates a hook. Hooking address is inferred by calling to GetProcAddress() function.
-        /// Hook is not activated until Enable() method is called.
-        /// </summary>
-        /// <param name="moduleName">A name of the module currently loaded in the memory. (e.g. ws2_32.dll).</param>
-        /// <param name="exportName">A name of the exported function name (e.g. send).</param>
-        /// <param name="detour">Callback function. Delegate must have a same original function prototype.</param>
-        /// <param name="callbackParam">A callback object which can be accessed within the detour.</param>
-        /// <returns>The hook with the supplied parameters.</returns>
-        [Obsolete("There is no need to specify new YourDelegateType or callbackParam", true)]
-        public static Hook<T> FromSymbol(string moduleName, string exportName, Delegate detour, object callbackParam = null) => FromSymbol(moduleName, exportName, detour as T);
 
         /// <summary>
         /// Remove a hook from the current process.
@@ -126,13 +110,12 @@ namespace Dalamud.Hooking
         public void Dispose()
         {
             if (this.IsDisposed)
-            {
                 return;
-            }
-
-            this.hookInfo.Dispose();
 
             this.IsDisposed = true;
+
+            if (this.hookImpl.IsHookEnabled)
+                this.hookImpl.Disable();
         }
 
         /// <summary>
@@ -142,7 +125,11 @@ namespace Dalamud.Hooking
         {
             this.CheckDisposed();
 
-            this.hookInfo.ThreadACL.SetExclusiveACL(null);
+            if (!this.hookImpl.IsHookActivated)
+                this.hookImpl.Activate();
+
+            if (!this.hookImpl.IsHookEnabled)
+                this.hookImpl.Enable();
         }
 
         /// <summary>
@@ -152,15 +139,21 @@ namespace Dalamud.Hooking
         {
             this.CheckDisposed();
 
-            this.hookInfo.ThreadACL.SetInclusiveACL(null);
+            if (!this.hookImpl.IsHookActivated)
+                return;
+
+            if (this.hookImpl.IsHookEnabled)
+                this.hookImpl.Disable();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        /// <summary>
+        /// Check if this object has been disposed already.
+        /// </summary>
         private void CheckDisposed()
         {
             if (this.IsDisposed)
             {
-                throw new ObjectDisposedException("Hook is already disposed.");
+                throw new ObjectDisposedException(message: "Hook is already disposed", null);
             }
         }
     }

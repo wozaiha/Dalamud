@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 
 using Dalamud.Data;
@@ -21,14 +22,14 @@ namespace Dalamud.Game.Text.SeStringHandling
     /// </summary>
     public abstract partial class Payload
     {
-        /// <summary>
-        /// The Lumina instance to use for any necessary data lookups.
-        /// </summary>
-        public DataManager DataResolver;
-
-        // private for now, since subclasses shouldn't interact with this
+        // private for now, since subclasses shouldn't interact with this.
         // To force-invalidate it, Dirty can be set to true
         private byte[] encodedData;
+
+        /// <summary>
+        /// Gets the Lumina instance to use for any necessary data lookups.
+        /// </summary>
+        public DataManager DataResolver => Service<DataManager>.Get();
 
         /// <summary>
         /// Gets the type of this payload.
@@ -44,9 +45,8 @@ namespace Dalamud.Game.Text.SeStringHandling
         /// Decodes a binary representation of a payload into its corresponding nice object payload.
         /// </summary>
         /// <param name="reader">A reader positioned at the start of the payload, and containing at least one entire payload.</param>
-        /// <param name="data">The DataManager instance.</param>
         /// <returns>The constructed Payload-derived object that was decoded from the binary data.</returns>
-        public static Payload Decode(BinaryReader reader, DataManager data)
+        public static Payload Decode(BinaryReader reader)
         {
             var payloadStartPos = reader.BaseStream.Position;
 
@@ -62,8 +62,6 @@ namespace Dalamud.Game.Text.SeStringHandling
             {
                 payload = DecodeChunk(reader);
             }
-
-            payload.DataResolver = data;
 
             // for now, cache off the actual binary data for this payload, so we don't have to
             // regenerate it if the payload isn't modified
@@ -129,6 +127,10 @@ namespace Dalamud.Game.Text.SeStringHandling
             {
                 case SeStringChunkType.EmphasisItalic:
                     payload = new EmphasisItalicPayload();
+                    break;
+
+                case SeStringChunkType.NewLine:
+                    payload = NewLinePayload.Payload;
                     break;
 
                 case SeStringChunkType.SeHyphen:
@@ -229,11 +231,13 @@ namespace Dalamud.Game.Text.SeStringHandling
         /// <summary>
         /// The start byte of a payload.
         /// </summary>
+        [SuppressMessage("StyleCop.CSharp.NamingRules", "SA1310:Field names should not contain underscore", Justification = "This is prefered.")]
         protected const byte START_BYTE = 0x02;
 
         /// <summary>
         /// The end byte of a payload.
         /// </summary>
+        [SuppressMessage("StyleCop.CSharp.NamingRules", "SA1310:Field names should not contain underscore", Justification = "This is prefered.")]
         protected const byte END_BYTE = 0x03;
 
         /// <summary>
@@ -294,6 +298,11 @@ namespace Dalamud.Game.Text.SeStringHandling
             /// See the <see cref="EmphasisItalicPayload"/> class.
             /// </summary>
             EmphasisItalic = 0x1A,
+
+            /// <summary>
+            /// See the <see cref="NewLinePayload"/>.
+            /// </summary>
+            NewLine = 0x10,
 
             /// <summary>
             /// See the <see cref="SeHyphenPayload"/> class.

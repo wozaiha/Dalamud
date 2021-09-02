@@ -5,8 +5,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 
-using Dalamud.Data.LuminaExtensions;
-using Dalamud.Interface;
+using Dalamud.Interface.Internal;
+using Dalamud.IoC;
+using Dalamud.IoC.Internal;
+using Dalamud.Utility;
 using ImGuiScene;
 using JetBrains.Annotations;
 using Lumina;
@@ -21,30 +23,24 @@ namespace Dalamud.Data
     /// <summary>
     /// This class provides data for Dalamud-internal features, but can also be used by plugins if needed.
     /// </summary>
-    public class DataManager : IDisposable
+    [PluginInterface]
+    [InterfaceVersion("1.0")]
+    public sealed class DataManager : IDisposable
     {
         private const string IconFileFormat = "ui/icon/{0:D3}000/{1}{2:D6}.tex";
-        private readonly InterfaceManager interfaceManager;
-
-        /// <summary>
-        /// A <see cref="Lumina"/> object which gives access to any excel/game data.
-        /// </summary>
-        private GameData gameData;
 
         private Thread luminaResourceThread;
+        private CancellationTokenSource luminaCancellationTokenSource;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DataManager"/> class.
         /// </summary>
-        /// <param name="language">The language to load data with by default.</param>
-        /// <param name="interfaceManager">An <see cref="InterfaceManager"/> instance to parse the data with.</param>
-        internal DataManager(ClientLanguage language, InterfaceManager interfaceManager)
+        internal DataManager()
         {
-            this.interfaceManager = interfaceManager;
-            // Set up default values so plugins do not null-reference when data is being loaded.
-            this.ServerOpCodes = new ReadOnlyDictionary<string, ushort>(new Dictionary<string, ushort>());
+            this.Language = Service<DalamudStartInfo>.Get().Language;
 
-            this.Language = language;
+            // Set up default values so plugins do not null-reference when data is being loaded.
+            this.ClientOpCodes = this.ServerOpCodes = new ReadOnlyDictionary<string, ushort>(new Dictionary<string, ushort>());
         }
 
         /// <summary>
@@ -64,9 +60,14 @@ namespace Dalamud.Data
         public ReadOnlyDictionary<string, ushort> ClientOpCodes { get; private set; }
 
         /// <summary>
+        /// Gets a <see cref="Lumina"/> object which gives access to any excel/game data.
+        /// </summary>
+        public GameData GameData { get; private set; }
+
+        /// <summary>
         /// Gets an <see cref="ExcelModule"/> object which gives access to any of the game's sheet data.
         /// </summary>
-        public ExcelModule Excel => this.gameData?.Excel;
+        public ExcelModule Excel => this.GameData?.Excel;
 
         /// <summary>
         /// Gets a value indicating whether Game Data is ready to be read.
@@ -80,7 +81,7 @@ namespace Dalamud.Data
         /// </summary>
         /// <typeparam name="T">The excel sheet type to get.</typeparam>
         /// <returns>The <see cref="ExcelSheet{T}"/>, giving access to game rows.</returns>
-        public ExcelSheet<T> GetExcelSheet<T>() where T : ExcelRow
+        public ExcelSheet<T>? GetExcelSheet<T>() where T : ExcelRow
         {
             return this.Excel.GetSheet<T>();
         }
@@ -91,18 +92,9 @@ namespace Dalamud.Data
         /// <param name="language">Language of the sheet to get.</param>
         /// <typeparam name="T">The excel sheet type to get.</typeparam>
         /// <returns>The <see cref="ExcelSheet{T}"/>, giving access to game rows.</returns>
-        public ExcelSheet<T> GetExcelSheet<T>(ClientLanguage language) where T : ExcelRow
+        public ExcelSheet<T>? GetExcelSheet<T>(ClientLanguage language) where T : ExcelRow
         {
-            var lang = language switch
-            {
-                ClientLanguage.Japanese => Lumina.Data.Language.Japanese,
-                ClientLanguage.English => Lumina.Data.Language.English,
-                ClientLanguage.German => Lumina.Data.Language.German,
-                ClientLanguage.French => Lumina.Data.Language.French,
-                ClientLanguage.ChineseSimplified => Lumina.Data.Language.ChineseSimplified,
-                _ => throw new ArgumentOutOfRangeException(nameof(this.Language), $"Unknown Language: {this.Language}"),
-            };
-            return this.Excel.GetSheet<T>(lang);
+            return this.Excel.GetSheet<T>(language.ToLumina());
         }
 
         /// <summary>
@@ -110,7 +102,7 @@ namespace Dalamud.Data
         /// </summary>
         /// <param name="path">The path inside of the game files.</param>
         /// <returns>The <see cref="FileResource"/> of the file.</returns>
-        public FileResource GetFile(string path)
+        public FileResource? GetFile(string path)
         {
             return this.GetFile<FileResource>(path);
         }
@@ -121,12 +113,12 @@ namespace Dalamud.Data
         /// <typeparam name="T">The type of resource.</typeparam>
         /// <param name="path">The path inside of the game files.</param>
         /// <returns>The <see cref="FileResource"/> of the file.</returns>
-        public T GetFile<T>(string path) where T : FileResource
+        public T? GetFile<T>(string path) where T : FileResource
         {
             var filePath = GameData.ParseFilePath(path);
             if (filePath == null)
                 return default;
-            return this.gameData.Repositories.TryGetValue(filePath.Repository, out var repository) ? repository.GetFile<T>(filePath.Category, filePath) : default;
+            return this.GameData.Repositories.TryGetValue(filePath.Repository, out var repository) ? repository.GetFile<T>(filePath.Category, filePath) : default;
         }
 
         /// <summary>
@@ -136,7 +128,7 @@ namespace Dalamud.Data
         /// <returns>True if the file exists.</returns>
         public bool FileExists(string path)
         {
-            return this.gameData.FileExists(path);
+            return this.GameData.FileExists(path);
         }
 
         /// <summary>
@@ -144,9 +136,21 @@ namespace Dalamud.Data
         /// </summary>
         /// <param name="iconId">The icon ID.</param>
         /// <returns>The <see cref="TexFile"/> containing the icon.</returns>
-        public TexFile GetIcon(int iconId)
+        public TexFile? GetIcon(uint iconId)
         {
             return this.GetIcon(this.Language, iconId);
+        }
+
+        /// <summary>
+        /// Get a <see cref="TexFile"/> containing the icon with the given ID, of the given quality.
+        /// </summary>
+        /// <param name="isHq">A value indicating whether the icon should be HQ.</param>
+        /// <param name="iconId">The icon ID.</param>
+        /// <returns>The <see cref="TexFile"/> containing the icon.</returns>
+        public TexFile? GetIcon(bool isHq, uint iconId)
+        {
+            var type = isHq ? "hq/" : string.Empty;
+            return this.GetIcon(type, iconId);
         }
 
         /// <summary>
@@ -155,7 +159,7 @@ namespace Dalamud.Data
         /// <param name="iconLanguage">The requested language.</param>
         /// <param name="iconId">The icon ID.</param>
         /// <returns>The <see cref="TexFile"/> containing the icon.</returns>
-        public TexFile GetIcon(ClientLanguage iconLanguage, int iconId)
+        public TexFile? GetIcon(ClientLanguage iconLanguage, uint iconId)
         {
             var type = iconLanguage switch
             {
@@ -164,7 +168,7 @@ namespace Dalamud.Data
                 ClientLanguage.German => "de/",
                 ClientLanguage.French => "fr/",
                 ClientLanguage.ChineseSimplified => "chs/",
-                _ => throw new ArgumentOutOfRangeException(nameof(this.Language), $"Unknown Language: {this.Language}"),
+                _ => throw new ArgumentOutOfRangeException(nameof(iconLanguage), $"Unknown Language: {iconLanguage}"),
             };
 
             return this.GetIcon(type, iconId);
@@ -176,7 +180,7 @@ namespace Dalamud.Data
         /// <param name="type">The type of the icon (e.g. 'hq' to get the HQ variant of an item icon).</param>
         /// <param name="iconId">The icon ID.</param>
         /// <returns>The <see cref="TexFile"/> containing the icon.</returns>
-        public TexFile GetIcon(string type, int iconId)
+        public TexFile? GetIcon(string type, uint iconId)
         {
             type ??= string.Empty;
             if (type.Length > 0 && !type.EndsWith("/"))
@@ -185,7 +189,8 @@ namespace Dalamud.Data
             var filePath = string.Format(IconFileFormat, iconId / 1000, type, iconId);
             var file = this.GetFile<TexFile>(filePath);
 
-            if (file != default(TexFile) || type.Length <= 0) return file;
+            if (type == string.Empty || file != default)
+                return file;
 
             // Couldn't get specific type, try for generic version.
             filePath = string.Format(IconFileFormat, iconId / 1000, string.Empty, iconId);
@@ -194,20 +199,47 @@ namespace Dalamud.Data
         }
 
         /// <summary>
+        /// Get a <see cref="TexFile"/> containing the HQ icon with the given ID.
+        /// </summary>
+        /// <param name="iconId">The icon ID.</param>
+        /// <returns>The <see cref="TexFile"/> containing the icon.</returns>
+        public TexFile? GetHqIcon(uint iconId)
+            => this.GetIcon(true, iconId);
+
+        /// <summary>
         /// Get the passed <see cref="TexFile"/> as a drawable ImGui TextureWrap.
         /// </summary>
         /// <param name="tex">The Lumina <see cref="TexFile"/>.</param>
         /// <returns>A <see cref="TextureWrap"/> that can be used to draw the texture.</returns>
-        public TextureWrap GetImGuiTexture(TexFile tex)
-            => this.interfaceManager.LoadImageRaw(tex.GetRgbaImageData(), tex.Header.Width, tex.Header.Height, 4);
+        public TextureWrap? GetImGuiTexture(TexFile? tex)
+        {
+            return tex == null ? null : Service<InterfaceManager>.Get().LoadImageRaw(tex.GetRgbaImageData(), tex.Header.Width, tex.Header.Height, 4);
+        }
 
         /// <summary>
         /// Get the passed texture path as a drawable ImGui TextureWrap.
         /// </summary>
         /// <param name="path">The internal path to the texture.</param>
         /// <returns>A <see cref="TextureWrap"/> that can be used to draw the texture.</returns>
-        public TextureWrap GetImGuiTexture(string path)
+        public TextureWrap? GetImGuiTexture(string path)
             => this.GetImGuiTexture(this.GetFile<TexFile>(path));
+
+        /// <summary>
+        /// Get a <see cref="TextureWrap"/> containing the icon with the given ID.
+        /// </summary>
+        /// <param name="iconId">The icon ID.</param>
+        /// <returns>The <see cref="TextureWrap"/> containing the icon.</returns>
+        public TextureWrap? GetImGuiTextureIcon(uint iconId)
+            => this.GetImGuiTexture(this.GetIcon(iconId));
+
+        /// <summary>
+        /// Get a <see cref="TextureWrap"/> containing the icon with the given ID, of the given quality.
+        /// </summary>
+        /// <param name="isHq">A value indicating whether the icon should be HQ.</param>
+        /// <param name="iconId">The icon ID.</param>
+        /// <returns>The <see cref="TextureWrap"/> containing the icon.</returns>
+        public TextureWrap? GetImGuiTextureIcon(bool isHq, uint iconId)
+            => this.GetImGuiTexture(this.GetIcon(isHq, iconId));
 
         /// <summary>
         /// Get a <see cref="TextureWrap"/> containing the icon with the given ID, of the given language.
@@ -215,7 +247,7 @@ namespace Dalamud.Data
         /// <param name="iconLanguage">The requested language.</param>
         /// <param name="iconId">The icon ID.</param>
         /// <returns>The <see cref="TextureWrap"/> containing the icon.</returns>
-        public TextureWrap GetImGuiTextureIcon(ClientLanguage iconLanguage, int iconId)
+        public TextureWrap? GetImGuiTextureIcon(ClientLanguage iconLanguage, uint iconId)
             => this.GetImGuiTexture(this.GetIcon(iconLanguage, iconId));
 
         /// <summary>
@@ -224,8 +256,16 @@ namespace Dalamud.Data
         /// <param name="type">The type of the icon (e.g. 'hq' to get the HQ variant of an item icon).</param>
         /// <param name="iconId">The icon ID.</param>
         /// <returns>The <see cref="TextureWrap"/> containing the icon.</returns>
-        public TextureWrap GetImGuiTextureIcon(string type, int iconId)
+        public TextureWrap? GetImGuiTextureIcon(string type, uint iconId)
             => this.GetImGuiTexture(this.GetIcon(type, iconId));
+
+        /// <summary>
+        /// Get a <see cref="TextureWrap"/> containing the HQ icon with the given ID.
+        /// </summary>
+        /// <param name="iconId">The icon ID.</param>
+        /// <returns>The <see cref="TextureWrap"/> containing the icon.</returns>
+        public TextureWrap? GetImGuiTextureHqIcon(uint iconId)
+            => this.GetImGuiTexture(this.GetHqIcon(iconId));
 
         #endregion
 
@@ -234,7 +274,7 @@ namespace Dalamud.Data
         /// </summary>
         public void Dispose()
         {
-            this.luminaResourceThread.Abort();
+            this.luminaCancellationTokenSource.Cancel();
         }
 
         /// <summary>
@@ -247,14 +287,14 @@ namespace Dalamud.Data
             {
                 Log.Verbose("Starting data load...");
 
-                var zoneOpCodeDict =
-                    JsonConvert.DeserializeObject<Dictionary<string, ushort>>(File.ReadAllText(Path.Combine(baseDir, "UIRes", "serveropcode.json")));
+                var zoneOpCodeDict = JsonConvert.DeserializeObject<Dictionary<string, ushort>>(
+                    File.ReadAllText(Path.Combine(baseDir, "UIRes", "serveropcode.json")));
                 this.ServerOpCodes = new ReadOnlyDictionary<string, ushort>(zoneOpCodeDict);
 
                 Log.Verbose("Loaded {0} ServerOpCodes.", zoneOpCodeDict.Count);
 
-                var clientOpCodeDict =
-                    JsonConvert.DeserializeObject<Dictionary<string, ushort>>(File.ReadAllText(Path.Combine(baseDir, "UIRes", "clientopcode.json")));
+                var clientOpCodeDict = JsonConvert.DeserializeObject<Dictionary<string, ushort>>(
+                    File.ReadAllText(Path.Combine(baseDir, "UIRes", "clientopcode.json")));
                 this.ClientOpCodes = new ReadOnlyDictionary<string, ushort>(clientOpCodeDict);
 
                 Log.Verbose("Loaded {0} ClientOpCodes.", clientOpCodeDict.Count);
@@ -262,51 +302,40 @@ namespace Dalamud.Data
                 var luminaOptions = new LuminaOptions
                 {
                     CacheFileResources = true,
-
 #if DEBUG
                     PanicOnSheetChecksumMismatch = true,
 #else
                     PanicOnSheetChecksumMismatch = false,
 #endif
-
-                    DefaultExcelLanguage = this.Language switch
-                    {
-                        ClientLanguage.Japanese => Lumina.Data.Language.Japanese,
-                        ClientLanguage.English => Lumina.Data.Language.English,
-                        ClientLanguage.German => Lumina.Data.Language.German,
-                        ClientLanguage.French => Lumina.Data.Language.French,
-                        ClientLanguage.ChineseSimplified => Lumina.Data.Language.ChineseSimplified,
-                        _ => throw new ArgumentOutOfRangeException(
-                                 nameof(this.Language),
-                                 @"Unknown Language: " + this.Language),
-                    },
+                    DefaultExcelLanguage = this.Language.ToLumina(),
                 };
 
                 var processModule = Process.GetCurrentProcess().MainModule;
                 if (processModule != null)
                 {
-                    this.gameData = new GameData(Path.Combine(Path.GetDirectoryName(processModule.FileName), "sqpack"), luminaOptions);
+                    this.GameData = new GameData(Path.Combine(Path.GetDirectoryName(processModule.FileName), "sqpack"), luminaOptions);
                 }
 
-                Log.Information("Lumina is ready: {0}", this.gameData.DataPath);
+                Log.Information("Lumina is ready: {0}", this.GameData.DataPath);
 
                 this.IsDataReady = true;
 
-                this.luminaResourceThread = new Thread(() =>
+                this.luminaCancellationTokenSource = new();
+
+                var luminaCancellationToken = this.luminaCancellationTokenSource.Token;
+                this.luminaResourceThread = new(() =>
                 {
-                    while (true)
+                    while (!luminaCancellationToken.IsCancellationRequested)
                     {
-                        if (this.gameData.FileHandleManager.HasPendingFileLoads)
+                        if (this.GameData.FileHandleManager.HasPendingFileLoads)
                         {
-                            this.gameData.ProcessFileHandleQueue();
+                            this.GameData.ProcessFileHandleQueue();
                         }
                         else
                         {
                             Thread.Sleep(5);
                         }
                     }
-
-                    // ReSharper disable once FunctionNeverReturns
                 });
                 this.luminaResourceThread.Start();
             }

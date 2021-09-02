@@ -1,5 +1,6 @@
 using System.Numerics;
 
+using Dalamud.Game.ClientState.Keys;
 using ImGuiNET;
 
 namespace Dalamud.Interface.Windowing
@@ -9,6 +10,8 @@ namespace Dalamud.Interface.Windowing
     /// </summary>
     public abstract class Window
     {
+        private static bool wasEscPressedLastFrame = false;
+
         private bool internalLastIsOpen = false;
         private bool internalIsOpen = false;
 
@@ -31,7 +34,7 @@ namespace Dalamud.Interface.Windowing
         /// <summary>
         /// Gets or sets the namespace of the window.
         /// </summary>
-        public string Namespace { get; set; }
+        public string? Namespace { get; set; }
 
         /// <summary>
         /// Gets or sets the name of the window.
@@ -39,6 +42,16 @@ namespace Dalamud.Interface.Windowing
         /// append an unique ID to it by specifying it after "###" behind the window title.
         /// </summary>
         public string WindowName { get; set; }
+
+        /// <summary>
+        /// Gets a value indicating whether the window is focused.
+        /// </summary>
+        public bool IsFocused { get; private set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether this window is to be closed with a hotkey, like Escape, and keep game addons open in turn if it is closed.
+        /// </summary>
+        public bool RespectCloseHotkey { get; set; } = true;
 
         /// <summary>
         /// Gets or sets the position of this window.
@@ -61,14 +74,9 @@ namespace Dalamud.Interface.Windowing
         public ImGuiCond SizeCondition { get; set; }
 
         /// <summary>
-        /// Gets or sets the minimum size of this window.
+        /// Gets or sets the size constraints of the window.
         /// </summary>
-        public Vector2? SizeConstraintsMin { get; set; }
-
-        /// <summary>
-        /// Gets or sets the maximum size of this window.
-        /// </summary>
-        public Vector2? SizeConstraintsMax { get; set; }
+        public WindowSizeConstraints? SizeConstraints { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether or not this window is collapsed.
@@ -104,6 +112,9 @@ namespace Dalamud.Interface.Windowing
             set
             {
                 this.internalIsOpen = value;
+
+                if (value == false)
+                    this.IsFocused = false;
             }
         }
 
@@ -113,6 +124,20 @@ namespace Dalamud.Interface.Windowing
         public void Toggle()
         {
             this.IsOpen ^= true;
+        }
+
+        /// <summary>
+        /// Code to be executed before conditionals are applied and the window is drawn.
+        /// </summary>
+        public virtual void PreDraw()
+        {
+        }
+
+        /// <summary>
+        /// Code to be executed after the window is drawn.
+        /// </summary>
+        public virtual void PostDraw()
+        {
         }
 
         /// <summary>
@@ -143,9 +168,6 @@ namespace Dalamud.Interface.Windowing
         /// </summary>
         internal void DrawInternal()
         {
-            // if (WindowName.Contains("Credits"))
-            //     Log.Information($"Draw: {IsOpen} {this.internalIsOpen} {this.internalLastIsOpen}");
-
             if (!this.IsOpen)
             {
                 if (this.internalIsOpen != this.internalLastIsOpen)
@@ -162,6 +184,7 @@ namespace Dalamud.Interface.Windowing
             if (hasNamespace)
                 ImGui.PushID(this.Namespace);
 
+            this.PreDraw();
             this.ApplyConditionals();
 
             if (this.ForceMainWindow)
@@ -177,9 +200,24 @@ namespace Dalamud.Interface.Windowing
             {
                 // Draw the actual window contents
                 this.Draw();
+
+                this.IsFocused = ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows);
+
+                var escapeDown = Service<KeyState>.Get()[VirtualKey.ESCAPE];
+                if (escapeDown && this.IsFocused && !wasEscPressedLastFrame && this.RespectCloseHotkey)
+                {
+                    this.IsOpen = false;
+                    wasEscPressedLastFrame = true;
+                }
+                else if (!escapeDown && wasEscPressedLastFrame)
+                {
+                    wasEscPressedLastFrame = false;
+                }
             }
 
             ImGui.End();
+
+            this.PostDraw();
 
             if (hasNamespace)
                 ImGui.PopID();
@@ -222,15 +260,31 @@ namespace Dalamud.Interface.Windowing
                 ImGui.SetNextWindowCollapsed(this.Collapsed.Value, this.CollapsedCondition);
             }
 
-            if (this.SizeConstraintsMin.HasValue && this.SizeConstraintsMax.HasValue)
+            if (this.SizeConstraints.HasValue)
             {
-                ImGui.SetNextWindowSizeConstraints(this.SizeConstraintsMin.Value * ImGuiHelpers.GlobalScale, this.SizeConstraintsMax.Value * ImGuiHelpers.GlobalScale);
+                ImGui.SetNextWindowSizeConstraints(this.SizeConstraints.Value.MinimumSize * ImGuiHelpers.GlobalScale, this.SizeConstraints.Value.MaximumSize * ImGuiHelpers.GlobalScale);
             }
 
             if (this.BgAlpha.HasValue)
             {
                 ImGui.SetNextWindowBgAlpha(this.BgAlpha.Value);
             }
+        }
+
+        /// <summary>
+        /// Structure detailing the size constraints of a window.
+        /// </summary>
+        public struct WindowSizeConstraints
+        {
+            /// <summary>
+            /// Gets or sets the minimum size of the window.
+            /// </summary>
+            public Vector2 MinimumSize { get; set; }
+
+            /// <summary>
+            /// Gets or sets the maximum size of the window.
+            /// </summary>
+            public Vector2 MaximumSize { get; set; }
         }
     }
 }
