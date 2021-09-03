@@ -41,7 +41,8 @@ namespace Dalamud.Interface.Internal.Windows
         private const int PluginIconHeight = 512;
 
         // TODO: Change back to master after release
-        private const string MainRepoImageUrl = "https://raw.githubusercontent.com/goatcorp/DalamudPlugins/api4/{0}/{1}/images/{2}";
+        // private const string MainRepoImageUrl = "https://raw.githubusercontent.com/goatcorp/DalamudPlugins/api4/{0}/{1}/images/{2}";
+        private const string MainRepoImageUrl = "https://dalamudplugins-1253720819.cos.ap-nanjing.myqcloud.com/cn-api4/plugins/{1}/images/{2}";
 
         private static readonly ModuleLog Log = new("PLUGINW");
 
@@ -1738,13 +1739,13 @@ namespace Dalamud.Interface.Internal.Windows
 
             var url = GetPluginIconUrl(manifest, manifest.SourceRepo.IsThirdParty, isTesting);
 
-            Log.Verbose($"Icon from {url}");
+            Log.Verbose($"Icon from {Util.FuckGFW(url)}");
 
             var client = new HttpClient();
 
             if (url != null)
             {
-                var data = await client.GetAsync(url);
+                var data = await client.GetAsync(Util.FuckGFW(url));
                 if (data.StatusCode == HttpStatusCode.NotFound)
                     return;
 
@@ -1795,9 +1796,9 @@ namespace Dalamud.Interface.Internal.Windows
                 var pluginImages = new TextureWrap[urls.Count];
                 for (var i = 0; i < urls.Count; i++)
                 {
-                    var data = await client.GetAsync(urls[i]);
+                    var data = await client.GetAsync(Util.FuckGFW(urls[i]));
 
-                    Serilog.Log.Information($"Download from {urls[i]}");
+                    Serilog.Log.Information($"Download from {Util.FuckGFW(urls[i])}");
 
                     if (data.StatusCode == HttpStatusCode.NotFound)
                         continue;
@@ -1812,7 +1813,7 @@ namespace Dalamud.Interface.Internal.Windows
 
                     if (image.Height != PluginImageHeight || image.Width != PluginImageWidth)
                     {
-                        Log.Error($"Image at {urls[i]} was not of the correct resolution.");
+                        Log.Error($"Image at {Util.FuckGFW(urls[i])} was not of the correct resolution.");
                         return;
                     }
 

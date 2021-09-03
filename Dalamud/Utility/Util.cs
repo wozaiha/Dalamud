@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-
+using System.Text.RegularExpressions;
 using Dalamud.Game;
 using Dalamud.Interface;
 using Dalamud.Interface.Colors;
@@ -203,6 +203,19 @@ namespace Dalamud.Utility
             }
 
             return text;
+        }
+
+        /// <summary>
+        /// This is a FUCK-GFW replacement of urls.
+        /// </summary>
+        /// <param name="url">A url to be fucked.</param>
+        /// <returns>A fucked url.</returns>
+        public static string FuckGFW(string url)
+        {
+            url = Regex.Replace(url, @"^https:\/\/raw\.githubusercontent\.com", "https://raw.fastgit.org");
+            url = Regex.Replace(url, @"^https:\/\/(?:gitee|github)\.com\/(.*)?\/(.*)?\/raw", "https://raw.fastgit.org/$1/$2");
+            url = Regex.Replace(url, @"^https:\/\/github\.com\/(.*)?\/(.*)?\/releases\/download", "https://download.fastgit.org/$1/$2/releases/download/");
+            return url;
         }
 
         // TODO: Someone implement GetUTF8String with some IntPtr overloads.

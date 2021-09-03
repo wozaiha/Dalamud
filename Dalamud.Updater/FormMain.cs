@@ -15,130 +15,71 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Text.RegularExpressions;
+using System.IO.Compression;
+using System.Configuration;
 
 namespace Dalamud.Updater
 {
     public partial class FormMain : Form
     {
         private string updateUrl = "https://dalamud-1253720819.cos.ap-nanjing.myqcloud.com/update.xml";
+
+        private List<string> pidList = new List<string>();
+        private bool isThreadRunning = true;
         private Version getVersion()
         {
-            var libPath = Path.GetFullPath("Dalamud.dll");
-            var version = "0.0.0.0";
-            if (File.Exists(libPath)) {
-                var versionInfo = FileVersionInfo.GetVersionInfo(libPath);
-                version = versionInfo.FileVersion;
+            var rgx = new Regex(@"\d+\.\d+\.\d+\.\d+");
+            var di = new DirectoryInfo(@".");
+            var dirs = di.GetDirectories("*", SearchOption.TopDirectoryOnly).Where(dir => rgx.IsMatch(dir.Name)).ToArray();
+
+            var version = new Version("0.0.0.0");
+            foreach (var dir in dirs)
+            {
+                var newVersion = new Version(dir.Name);
+                if (newVersion > version)
+                {
+                    version = newVersion;
+                }
             }
-            return new Version(version);
+            return version;
         }
 
         public FormMain()
         {
             InitializeComponent();
+            InitializePIDCheck();
             labelVersion.Text = string.Format("当前版本 : {0}", getVersion());
+        }
+
+        private void InitializePIDCheck()
+        {
+            this.pidList = Process.GetProcessesByName("ffxiv_dx11").ToList()
+                            .ConvertAll(process => process.Id.ToString());
+            this.comboBoxFFXIV.Items.AddRange(this.pidList.ToArray());
+            if (this.pidList.Count > 0)
+            {
+                this.comboBoxFFXIV.SelectedIndex = this.comboBoxFFXIV.FindStringExact(this.pidList[0]);
+            }
+            var thread = new Thread(() => {
+                while (this.isThreadRunning)
+                {
+                    this.pidList = Process.GetProcessesByName("ffxiv_dx11").ToList()
+                                    .ConvertAll(process => process.Id.ToString());
+                }
+            });
+            thread.Start();
         }
 
         private void FormMain_Load(object sender, EventArgs e)
         {
-            //Uncomment below lines to handle parsing logic of non XML AppCast file.
-
-            //AutoUpdater.ParseUpdateInfoEvent += AutoUpdaterOnParseUpdateInfoEvent;
-            //AutoUpdater.Start("https://rbsoft.org/updates/AutoUpdaterTest.json");
-
-            //Uncomment below line to run update process using non administrator account.
-
-            //AutoUpdater.RunUpdateAsAdmin = false;
-
-            //Uncomment below line to see russian version
-
-            //Thread.CurrentThread.CurrentCulture = Thread.CurrentThread.CurrentUICulture = CultureInfo.CreateSpecificCulture("ru");
-
-            //If you want to open download page when user click on download button uncomment below line.
-
-            //AutoUpdater.OpenDownloadPage = true;
-
-            //Don't want user to select remind later time in AutoUpdater notification window then uncomment 3 lines below so default remind later time will be set to 2 days.
-
-            //AutoUpdater.LetUserSelectRemindLater = false;
-            //AutoUpdater.RemindLaterTimeSpan = RemindLaterFormat.Minutes;
-            //AutoUpdater.RemindLaterAt = 1;
-
-            //Don't want to show Skip button then uncomment below line.
-
-            //AutoUpdater.ShowSkipButton = false;
-
-            //Don't want to show Remind Later button then uncomment below line.
-
-            //AutoUpdater.ShowRemindLaterButton = false;
-
-            //Want to show custom application title then uncomment below line.
-
-            //AutoUpdater.AppTitle = "My Custom Application Title";
-
-            //Want to show errors then uncomment below line.
-
-            //AutoUpdater.ReportErrors = true;
-
-            //Want to handle how your application will exit when application finished downloading then uncomment below line.
-
             AutoUpdater.ApplicationExitEvent += AutoUpdater_ApplicationExitEvent;
-
-            //Want to handle update logic yourself then uncomment below line.
-
             AutoUpdater.CheckForUpdateEvent += AutoUpdaterOnCheckForUpdateEvent;
-
-            //Want to use XML and Update file served only through Proxy.
-
-            //var proxy = new WebProxy("localproxyIP:8080", true) {Credentials = new NetworkCredential("domain\\user", "password")};
-
-            //AutoUpdater.Proxy = proxy;
-
-            //Want to check for updates frequently then uncomment following lines.
-
-            //System.Timers.Timer timer = new System.Timers.Timer
-            //{
-            //    Interval = 2 * 60 * 1000,
-            //    SynchronizingObject = this
-            //};
-            //timer.Elapsed += delegate
-            //{
-            //    AutoUpdater.Start("https://rbsoft.org/updates/AutoUpdaterTest.xml");
-            //};
-            //timer.Start();
-
-            //Uncomment following lines to provide basic authentication credentials to use.
-
-            //BasicAuthentication basicAuthentication = new BasicAuthentication("myUserName", "myPassword");
-            //AutoUpdater.BasicAuthXML = AutoUpdater.BasicAuthDownload = basicAuthentication;
-
-            //Uncomment following lines to enable forced updates.
-
-            //AutoUpdater.Mandatory = true;
-            //AutoUpdater.UpdateMode = Mode.Forced;
-
-            //Want to change update form size then uncomment below line.
-
-            //AutoUpdater.UpdateFormSize = new System.Drawing.Size(800, 600);
-
-            //Uncomment following if you want to update using FTP.
-            //AutoUpdater.Start("ftp://rbsoft.org/updates/AutoUpdaterTest.xml", new NetworkCredential("FtpUserName", "FtpPassword"));
-
-            //Uncomment following lines if you want to persist Remind Later and Skip values in a json file.
-            //string jsonPath = Path.Combine(Environment.CurrentDirectory, "settings.json");
-            //AutoUpdater.PersistenceProvider = new JsonFilePersistenceProvider(jsonPath);
-
-            //Uncomment following line if you want to set the zip extraction path.
-            //var currentDirectory = new DirectoryInfo(Environment.CurrentDirectory);
-            //if (currentDirectory.Parent != null)
-            //{
-            //    AutoUpdater.InstallationPath = currentDirectory.Parent.FullName;
-            //}
-
-            //Uncomment following line if you want to check for update synchronously.
-            //AutoUpdater.Synchronous = true;
-
             AutoUpdater.InstalledVersion = getVersion();
-            AutoUpdater.Start("https://dalamud-1253720819.cos.ap-nanjing.myqcloud.com/update.xml");
+        }
+        private void FormMain_Disposed(object sender, EventArgs e)
+        {
+            this.isThreadRunning = false;
         }
 
         private void AutoUpdater_ApplicationExitEvent()
@@ -242,21 +183,152 @@ namespace Dalamud.Updater
             }
         }
 
+        private static void TryDownloadRuntime(DirectoryInfo runtimePath, string RuntimeVersion)
+        {
+            new Thread(() =>
+            {
+                try
+                {
+                    DownloadRuntime(runtimePath, RuntimeVersion);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("运行库下载失败 :(", "下载运行库",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Information);
+                    return;
+                }
+                MessageBox.Show("运行库已下载 :)", "下载运行库",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Information);
+            }).Start();
+        }
+
+        private static void DownloadRuntime(DirectoryInfo runtimePath, string version)
+        {
+            // Ensure directory exists
+            if (!runtimePath.Exists)
+            {
+                runtimePath.Create();
+            }
+            else
+            {
+                runtimePath.Delete(true);
+                runtimePath.Create();
+            }
+
+            var client = new WebClient();
+
+            var dotnetUrl = $"https://dotnetcli.azureedge.net/dotnet/Runtime/{version}/dotnet-runtime-{version}-win-x64.zip";
+            var desktopUrl = $"https://dotnetcli.azureedge.net/dotnet/WindowsDesktop/{version}/windowsdesktop-runtime-{version}-win-x64.zip";
+
+            var downloadPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+
+            if (File.Exists(downloadPath))
+                File.Delete(downloadPath);
+
+            client.DownloadFile(dotnetUrl, downloadPath);
+            ZipFile.ExtractToDirectory(downloadPath, runtimePath.FullName);
+
+            client.DownloadFile(desktopUrl, downloadPath);
+            ZipFile.ExtractToDirectory(downloadPath, runtimePath.FullName);
+
+            File.Delete(downloadPath);
+        }
+
+        private void ButtonCheckRuntime_Click(object sender, EventArgs e)
+        {
+            var RuntimeVersion = "5.0.6";
+            var runtimePath = new DirectoryInfo(Path.Combine(Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName, "XIVLauncher", "runtime"));
+            var runtimePaths = new DirectoryInfo[]
+            {
+                new DirectoryInfo(Path.Combine(runtimePath.FullName, "host", "fxr", RuntimeVersion)),
+                new DirectoryInfo(Path.Combine(runtimePath.FullName, "shared", "Microsoft.NETCore.App", RuntimeVersion)),
+                new DirectoryInfo(Path.Combine(runtimePath.FullName, "shared", "Microsoft.WindowsDesktop.App", RuntimeVersion)),
+            };
+            if (runtimePaths.Any(p => !p.Exists))
+            {
+                var choice = MessageBox.Show("运行卫月需要下载所需运行库，是否下载？", "下载运行库",
+                                MessageBoxButtons.YesNo,
+                                MessageBoxIcon.Information);
+                if (choice == DialogResult.Yes)
+                    TryDownloadRuntime(runtimePath, RuntimeVersion);
+                else
+                    return;
+            } else
+            {
+                var choice = MessageBox.Show("运行库已存在，是否强制下载？", "下载运行库",
+                                MessageBoxButtons.YesNo,
+                                MessageBoxIcon.Information);
+                if (choice == DialogResult.Yes)
+                    TryDownloadRuntime(runtimePath, RuntimeVersion);
+            }
+        }
+
         private void ButtonCheckForUpdate_Click(object sender, EventArgs e)
         {
-            //Uncomment below lines to select download path where update is saved.
-
-            //FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog();
-            //if (folderBrowserDialog.ShowDialog().Equals(DialogResult.OK))
-            //{
-            //    AutoUpdater.DownloadPath = folderBrowserDialog.SelectedPath;
-            //    AutoUpdater.Mandatory = true;
-            //    AutoUpdater.Start("https://rbsoft.org/updates/AutoUpdaterTest.xml");
-            //}
-
+            if (this.pidList.Count > 0)
+            {
+                var choice = MessageBox.Show("经检测存在 ffxiv_dx11.exe 进程，更新卫月需要关闭游戏，需要帮您代劳吗？", "关闭游戏",
+                                MessageBoxButtons.YesNo,
+                                MessageBoxIcon.Information);
+                if (choice == DialogResult.Yes)
+                {
+                    var pid = int.Parse(this.pidList[0]);
+                    Process.GetProcessById(pid).Kill();
+                } else
+                {
+                    return;
+                }
+            }
             AutoUpdater.Mandatory = true;
             AutoUpdater.InstalledVersion = getVersion();
+            var OverwriteUpdate = ConfigurationManager.AppSettings["OverwriteUpdate"];
+            if (OverwriteUpdate != null)
+                updateUrl = OverwriteUpdate;
+            if (this.checkBoxAcce.Checked)
+                updateUrl = updateUrl.Replace("/update", "/acce_update");
             AutoUpdater.Start(updateUrl);
+        }
+
+        private void comboBoxFFXIV_Clicked(object sender, EventArgs e)
+        {
+            foreach(var pid in this.pidList)
+                if (!this.comboBoxFFXIV.Items.Contains(pid))
+                    this.comboBoxFFXIV.Items.Add(pid);
+            var toDel = new List<string>();
+            foreach (string pid in this.comboBoxFFXIV.Items)
+                if (!this.pidList.Contains(pid))
+                    toDel.Add(pid);
+            foreach (var pid in toDel)
+                if (!this.pidList.Contains(pid))
+                    this.comboBoxFFXIV.Items.Remove(pid);
+
+        }
+
+        private void linkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            Process.Start("https://jq.qq.com/?_wv=1027&k=agTNLSBJ");
+        }
+
+        private void ButtonInject_Click(object sender, EventArgs e)
+        {
+            var version = getVersion();
+            var dalamudPath = new DirectoryInfo(Path.Combine(Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName, $"{version}"));
+            var injectorFile = Path.Combine(dalamudPath.FullName, "Dalamud.Injector.exe");
+            string pid = this.comboBoxFFXIV.SelectedItem.ToString();
+            if( pid.Length > 0)
+            {
+                var startInfo = new ProcessStartInfo(injectorFile, pid);
+                startInfo.WorkingDirectory = dalamudPath.FullName;
+                Process.Start(startInfo);
+            }
+            else
+            {
+                MessageBox.Show("未选择游戏进程", "找不到游戏",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error);
+            }
         }
     }
 }

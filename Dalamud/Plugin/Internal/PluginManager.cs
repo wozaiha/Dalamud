@@ -405,7 +405,7 @@ namespace Dalamud.Plugin.Internal
             var version = useTesting ? repoManifest.TestingAssemblyVersion : repoManifest.AssemblyVersion;
 
             using var client = new HttpClient();
-            var response = await client.GetAsync(downloadUrl);
+            var response = await client.GetAsync(Util.FuckGFW(downloadUrl));
             response.EnsureSuccessStatusCode();
 
             var outputDir = new DirectoryInfo(Path.Combine(this.pluginDirectory.FullName, repoManifest.InternalName, version.ToString()));
