@@ -39,6 +39,7 @@ namespace Dalamud.Updater
             this.buttonInject = new System.Windows.Forms.Button();
             this.linkLabel1 = new System.Windows.Forms.LinkLabel();
             this.checkBoxAcce = new System.Windows.Forms.CheckBox();
+            this.linkLabel2 = new System.Windows.Forms.LinkLabel();
             this.SuspendLayout();
             // 
             // buttonCheckForUpdate
@@ -105,7 +106,7 @@ namespace Dalamud.Updater
             // linkLabel1
             // 
             this.linkLabel1.AutoSize = true;
-            this.linkLabel1.Location = new System.Drawing.Point(156, 281);
+            this.linkLabel1.Location = new System.Drawing.Point(158, 281);
             this.linkLabel1.Name = "linkLabel1";
             this.linkLabel1.Size = new System.Drawing.Size(64, 15);
             this.linkLabel1.TabIndex = 3;
@@ -123,12 +124,24 @@ namespace Dalamud.Updater
             this.checkBoxAcce.Text = "国际加速";
             this.checkBoxAcce.UseVisualStyleBackColor = true;
             // 
+            // linkLabel2
+            // 
+            this.linkLabel2.AutoSize = true;
+            this.linkLabel2.Location = new System.Drawing.Point(-2, 281);
+            this.linkLabel2.Name = "linkLabel2";
+            this.linkLabel2.Size = new System.Drawing.Size(59, 15);
+            this.linkLabel2.TabIndex = 3;
+            this.linkLabel2.TabStop = true;
+            this.linkLabel2.Text = "投喂小獭";
+            this.linkLabel2.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.linkLabel2_LinkClicked);
+            // 
             // FormMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(220, 295);
             this.Controls.Add(this.checkBoxAcce);
+            this.Controls.Add(this.linkLabel2);
             this.Controls.Add(this.linkLabel1);
             this.Controls.Add(this.comboBoxFFXIV);
             this.Controls.Add(this.labelVersion);
@@ -158,6 +171,7 @@ namespace Dalamud.Updater
         private System.Windows.Forms.Button buttonInject;
         private System.Windows.Forms.LinkLabel linkLabel1;
         private System.Windows.Forms.CheckBox checkBoxAcce;
+        private System.Windows.Forms.LinkLabel linkLabel2;
     }
 }
 

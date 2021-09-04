@@ -21,7 +21,14 @@ public class DalamudBuild : NukeBuild
     public static int Main() => Execute<DalamudBuild>(x => x.Compile);
 
     [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
-    readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
+
+    // readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
+
+#if RELEASE
+    readonly Configuration Configuration = Configuration.Release;
+#else
+    readonly Configuration Configuration = Configuration.Debug;
+#endif
 
     [Solution] Solution Solution;
     [GitRepository] GitRepository GitRepository;

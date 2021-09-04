@@ -103,8 +103,8 @@ namespace Dalamud
             var logPath = Path.Combine(baseDirectory, "dalamud.log");
             var oldPath = Path.Combine(baseDirectory, "dalamud.log.old");
 #else
-            var logPath = Path.Combine(baseDirectory, "..", "..", "..", "dalamud.log");
-            var oldPath = Path.Combine(baseDirectory, "..", "..", "..", "dalamud.log.old");
+            var logPath = Path.Combine(baseDirectory, "dalamud.log");
+            var oldPath = Path.Combine(baseDirectory, "dalamud.log.old");
 #endif
 
             CullLogFile(logPath, oldPath, 1 * 1024 * 1024);

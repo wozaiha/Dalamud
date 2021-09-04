@@ -100,10 +100,10 @@ namespace Dalamud.Injector
                     $"as a release build before and that the target process can be accessed with VM_WRITE permissions.\n\n" +
                     $"{eventArgs.ExceptionObject}";
 #else
-                var caption = "XIVLauncher Error";
+                var caption = "注入失败";
                 var message =
-                    "Failed to inject the XIVLauncher in-game addon.\nPlease try restarting your game and your PC.\n" +
-                    "If this keeps happening, please report this error.";
+                    "注入卫月插件框架失败。\n请尝试重启游戏与PC。\n" +
+                    "如果这个问题重复出现，请向我们报告。";
 #endif
                 _ = MessageBoxW(IntPtr.Zero, message, caption, MessageBoxType.IconError | MessageBoxType.Ok);
 
@@ -118,7 +118,7 @@ namespace Dalamud.Injector
 #if DEBUG
             var logPath = Path.Combine(baseDirectory, "injector.log");
 #else
-            var logPath = Path.Combine(baseDirectory, "..", "..", "..", "dalamud.injector.log");
+            var logPath = Path.Combine(baseDirectory, "injector.log");
 #endif
 
             var levelSwitch = new LoggingLevelSwitch();

@@ -219,8 +219,8 @@ namespace Dalamud.Updater
 
             var client = new WebClient();
 
-            var dotnetUrl = $"https://dotnetcli.azureedge.net/dotnet/Runtime/{version}/dotnet-runtime-{version}-win-x64.zip";
-            var desktopUrl = $"https://dotnetcli.azureedge.net/dotnet/WindowsDesktop/{version}/windowsdesktop-runtime-{version}-win-x64.zip";
+            var dotnetUrl = $"https://dotnetcli.blob.core.windows.net/dotnet/Runtime/{version}/dotnet-runtime-{version}-win-x64.zip";
+            var desktopUrl = $"https://dotnetcli.blob.core.windows.net/dotnet/WindowsDesktop/{version}/windowsdesktop-runtime-{version}-win-x64.zip";
 
             var downloadPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
 
@@ -287,7 +287,7 @@ namespace Dalamud.Updater
             if (OverwriteUpdate != null)
                 updateUrl = OverwriteUpdate;
             if (this.checkBoxAcce.Checked)
-                updateUrl = updateUrl.Replace("/update", "/acce_update");
+                updateUrl = updateUrl.Replace("/update", "/acce_update").Replace("ap-nanjing", "accelerate");
             AutoUpdater.Start(updateUrl);
         }
 
@@ -310,15 +310,19 @@ namespace Dalamud.Updater
         {
             Process.Start("https://jq.qq.com/?_wv=1027&k=agTNLSBJ");
         }
+        private void linkLabel2_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            Process.Start("https://afdian.net/@bluefissure");
+        }
 
         private void ButtonInject_Click(object sender, EventArgs e)
         {
             var version = getVersion();
             var dalamudPath = new DirectoryInfo(Path.Combine(Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName, $"{version}"));
             var injectorFile = Path.Combine(dalamudPath.FullName, "Dalamud.Injector.exe");
-            string pid = this.comboBoxFFXIV.SelectedItem.ToString();
-            if( pid.Length > 0)
+            if(this.comboBoxFFXIV.SelectedItem != null)
             {
+                string pid = this.comboBoxFFXIV.SelectedItem.ToString();
                 var startInfo = new ProcessStartInfo(injectorFile, pid);
                 startInfo.WorkingDirectory = dalamudPath.FullName;
                 Process.Start(startInfo);
