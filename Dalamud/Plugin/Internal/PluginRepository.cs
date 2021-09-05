@@ -37,7 +37,7 @@ namespace Dalamud.Plugin.Internal
         /// <summary>
         /// Gets a new instance of the <see cref="PluginRepository"/> class for the main repo.
         /// </summary>
-        public static PluginRepository MainRepo => new(DalamudPluginsMasterUrl, true);
+        public static PluginRepository MainRepo => new(Utility.Util.FuckGFW(DalamudPluginsMasterUrl), true);
 
         /// <summary>
         /// Gets the pluginmaster.json URL.

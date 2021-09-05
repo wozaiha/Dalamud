@@ -254,6 +254,7 @@ namespace Dalamud.Injector
                     GameVersion = gameVer,
                     Language = ClientLanguage.ChineseSimplified,
                     OptOutMbCollection = false,
+                    GlobalAccelerate = false,
                 };
 
                 Log.Debug(
@@ -265,7 +266,8 @@ namespace Dalamud.Injector
                     $"    AssetDirectory: {startInfo.AssetDirectory}\n" +
                     $"    GameVersion: {startInfo.GameVersion}\n" +
                     $"    Language: {startInfo.Language}\n" +
-                    $"    OptOutMbCollection: {startInfo.OptOutMbCollection}");
+                    $"    OptOutMbCollection: {startInfo.OptOutMbCollection}\n" +
+                    $"    GlobalAccelerate: {startInfo.GlobalAccelerate}");
 
                 Log.Information("A Dalamud start info was not found in the program arguments. One has been generated for you.");
                 Log.Information("Copy the following contents into the program arguments:");

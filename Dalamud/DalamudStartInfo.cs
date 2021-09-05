@@ -51,5 +51,10 @@ namespace Dalamud
         /// Gets a value indicating whether or not market board information should be uploaded by default.
         /// </summary>
         public bool OptOutMbCollection { get; init; }
+
+        /// <summary>
+        /// Gets a value indicating whether or not use global accelearte of tencent cos by default.
+        /// </summary>
+        public bool GlobalAccelerate { get; init; }
     }
 }

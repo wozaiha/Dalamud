@@ -18,6 +18,7 @@ using System.Windows.Forms;
 using System.Text.RegularExpressions;
 using System.IO.Compression;
 using System.Configuration;
+using Newtonsoft.Json.Linq;
 
 namespace Dalamud.Updater
 {
@@ -64,8 +65,12 @@ namespace Dalamud.Updater
             var thread = new Thread(() => {
                 while (this.isThreadRunning)
                 {
-                    this.pidList = Process.GetProcessesByName("ffxiv_dx11").ToList()
+                    var newPidList = Process.GetProcessesByName("ffxiv_dx11").ToList()
                                     .ConvertAll(process => process.Id.ToString());
+                    if (newPidList.GetHashCode() != this.pidList.GetHashCode())
+                    {
+                        this.pidList = newPidList;
+                    }
                 }
             });
             thread.Start();
@@ -183,7 +188,7 @@ namespace Dalamud.Updater
             }
         }
 
-        private static void TryDownloadRuntime(DirectoryInfo runtimePath, string RuntimeVersion)
+        private void TryDownloadRuntime(DirectoryInfo runtimePath, string RuntimeVersion)
         {
             new Thread(() =>
             {
@@ -204,7 +209,7 @@ namespace Dalamud.Updater
             }).Start();
         }
 
-        private static void DownloadRuntime(DirectoryInfo runtimePath, string version)
+        private void DownloadRuntime(DirectoryInfo runtimePath, string version)
         {
             // Ensure directory exists
             if (!runtimePath.Exists)
@@ -218,9 +223,9 @@ namespace Dalamud.Updater
             }
 
             var client = new WebClient();
-
-            var dotnetUrl = $"https://dotnetcli.blob.core.windows.net/dotnet/Runtime/{version}/dotnet-runtime-{version}-win-x64.zip";
-            var desktopUrl = $"https://dotnetcli.blob.core.windows.net/dotnet/WindowsDesktop/{version}/windowsdesktop-runtime-{version}-win-x64.zip";
+            var baseDotnetRuntimeUrl = this.checkBoxAcce.Checked ? "https://dotnetcli.azureedge.net" : "https://dotnetcli.blob.core.windows.net";
+            var dotnetUrl = $"{baseDotnetRuntimeUrl}/dotnet/Runtime/{version}/dotnet-runtime-{version}-win-x64.zip";
+            var desktopUrl = $"{baseDotnetRuntimeUrl}/dotnet/WindowsDesktop/{version}/windowsdesktop-runtime-{version}-win-x64.zip";
 
             var downloadPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
 
@@ -315,6 +320,29 @@ namespace Dalamud.Updater
             Process.Start("https://afdian.net/@bluefissure");
         }
 
+        private string GeneratingDalamudStartInfo(Process process)
+        {
+            var ffxivDir = Path.GetDirectoryName(process.MainModule.FileName);
+            var appDataDir = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
+            var xivlauncherDir = Path.Combine(appDataDir, "XIVLauncher");
+
+            var gameVerStr = File.ReadAllText(Path.Combine(ffxivDir, "ffxivgame.ver"));
+
+            var startInfo = JObject.FromObject(new
+            {
+                ConfigurationPath = Path.Combine(xivlauncherDir, "dalamudConfig.json"),
+                PluginDirectory = Path.Combine(xivlauncherDir, "installedPlugins"),
+                DefaultPluginDirectory = Path.Combine(xivlauncherDir, "devPlugins"),
+                AssetDirectory = Path.Combine(xivlauncherDir, "dalamudAssets"),
+                GameVersion = gameVerStr,
+                Language = "ChineseSimplified",
+                OptOutMbCollection = false,
+                GlobalAccelerate = this.checkBoxAcce.Checked,
+            });
+
+            return startInfo.ToString();
+        }
+
         private void ButtonInject_Click(object sender, EventArgs e)
         {
             var version = getVersion();
@@ -322,8 +350,10 @@ namespace Dalamud.Updater
             var injectorFile = Path.Combine(dalamudPath.FullName, "Dalamud.Injector.exe");
             if(this.comboBoxFFXIV.SelectedItem != null)
             {
-                string pid = this.comboBoxFFXIV.SelectedItem.ToString();
-                var startInfo = new ProcessStartInfo(injectorFile, pid);
+                var pid = this.comboBoxFFXIV.SelectedItem.ToString();
+                var process = Process.GetProcessById(int.Parse(pid));
+                var dalamudStartInfo = Convert.ToBase64String(Encoding.UTF8.GetBytes(GeneratingDalamudStartInfo(process)));
+                var startInfo = new ProcessStartInfo(injectorFile, $"{pid} {dalamudStartInfo}");
                 startInfo.WorkingDirectory = dalamudPath.FullName;
                 Process.Start(startInfo);
             }
