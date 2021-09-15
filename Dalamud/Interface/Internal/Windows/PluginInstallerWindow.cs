@@ -1751,9 +1751,9 @@ namespace Dalamud.Interface.Internal.Windows
 
             Log.Verbose($"Icon from {Util.FuckGFW(url)}");
 
-            if (url != null)
+            if (!string.IsNullOrWhiteSpace(url))
             {
-                var data = await this.httpClient.GetAsync(url);
+                var data = await this.httpClient.GetAsync(Util.FuckGFW(url));
                 if (data.StatusCode == HttpStatusCode.NotFound)
                     return;
 
