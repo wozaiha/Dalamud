@@ -1802,7 +1802,7 @@ namespace Dalamud.Interface.Internal.Windows
                 var pluginImages = new TextureWrap[urls.Count];
                 for (var i = 0; i < urls.Count; i++)
                 {
-                    var data = await this.httpClient.GetAsync(urls[i]);
+                    var data = await this.httpClient.GetAsync(Util.FuckGFW(urls[i]));
 
                     Serilog.Log.Information($"Download from {Util.FuckGFW(urls[i])}");
 
