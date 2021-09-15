@@ -474,7 +474,7 @@ namespace Dalamud.Interface.Internal
                 GCHandleType.Pinned);
             IconFont = ImGui.GetIO().Fonts.AddFontFromFileTTF(fontPathIcon, 17.0f, null, iconRangeHandle.AddrOfPinnedObject());
 
-            var fontPathMono = Path.Combine(dalamud.AssetDirectory.FullName, "UIRes", "sarasa-mono-sc-regular.ttf");
+            var fontPathMono = Path.Combine(dalamud.AssetDirectory.FullName, "UIRes", "sarasa-mono-sc-nerd-regular.ttf");
 
             if (!File.Exists(fontPathMono))
                 ShowFontError(fontPathMono);
