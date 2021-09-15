@@ -196,7 +196,6 @@ namespace Dalamud.Injector
                 case -1:
                     process = Process.GetProcessesByName("ffxiv_dx11").FirstOrDefault(i =>
                     {
-                        Console.WriteLine($"process: {i.ProcessName}-{i.Id}, modules count: {i.Modules.Count}");
                         for (var j = 0; j < i.Modules.Count; j++)
                         {
                             if (i.Modules[j].ModuleName == "Dalamud.dll")
