@@ -1911,12 +1911,13 @@ namespace Dalamud.Interface.Internal.Windows
 
                     data.EnsureSuccessStatusCode();
 
+                    var image = interfaceManager.LoadImage(await data.Content.ReadAsByteArrayAsync());
+                    
                     if (image.Height != PluginImageHeight || image.Width != PluginImageWidth)
                     {
                         Log.Error($"Image at {Util.FuckGFW(urls[i])} was not of the correct resolution.");
                         return;
                     }
-                    var image = interfaceManager.LoadImage(await data.Content.ReadAsByteArrayAsync());
 
                     if (!ValidateImage(image, url))
                         continue;
