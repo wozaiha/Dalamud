@@ -41,10 +41,6 @@ namespace Dalamud.Plugin.Internal
         private readonly DirectoryInfo devPluginDirectory;
         private readonly BannedPlugin[] bannedPlugins;
 
-        private readonly List<LocalPlugin> installedPlugins = new();
-        private List<RemotePluginManifest> availablePlugins = new();
-        private List<AvailablePluginUpdate> updatablePlugins = new();
-
         /// <summary>
         /// Initializes a new instance of the <see cref="PluginManager"/> class.
         /// </summary>
@@ -72,9 +68,7 @@ namespace Dalamud.Plugin.Internal
             this.PluginConfigs = new PluginConfigurations(Path.Combine(Path.GetDirectoryName(startInfo.ConfigurationPath) ?? string.Empty, "pluginConfigs"));
 
             var bannedPluginsJson = File.ReadAllText(Path.Combine(startInfo.AssetDirectory, "UIRes", "bannedplugin.json"));
-            this.bannedPlugins = JsonConvert.DeserializeObject<BannedPlugin[]>(bannedPluginsJson);
-
-            this.SetPluginReposFromConfig(false);
+            this.bannedPlugins = JsonConvert.DeserializeObject<BannedPlugin[]>(bannedPluginsJson) ?? Array.Empty<BannedPlugin>();
 
             this.ApplyPatches();
         }
@@ -132,7 +126,7 @@ namespace Dalamud.Plugin.Internal
         /// <inheritdoc/>
         public void Dispose()
         {
-            foreach (var plugin in this.installedPlugins.ToArray())
+            foreach (var plugin in this.InstalledPlugins)
             {
                 try
                 {
@@ -146,10 +140,12 @@ namespace Dalamud.Plugin.Internal
         }
 
         /// <summary>
-        /// Set the list of repositories to use. Should be called when the Settings window has been updated or at instantiation.
+        /// Set the list of repositories to use and downloads their contents.
+        /// Should be called when the Settings window has been updated or at instantiation.
         /// </summary>
         /// <param name="notify">Whether the available plugins changed should be evented after.</param>
-        public void SetPluginReposFromConfig(bool notify)
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        public async Task SetPluginReposFromConfigAsync(bool notify)
         {
             var configuration = Service<DalamudConfiguration>.Get();
 
@@ -159,15 +155,16 @@ namespace Dalamud.Plugin.Internal
                 .Select(repo => new PluginRepository(repo.Url, repo.IsEnabled)));
 
             this.Repos = repos;
-
-            if (notify)
-                this.NotifyAvailablePluginsChanged();
+            await this.ReloadPluginMastersAsync(notify);
         }
 
         /// <summary>
         /// Load all plugins, sorted by priority. Any plugins with no explicit definition file or a negative priority
-        /// are loaded asynchronously. Should only be called during Dalamud startup.
+        /// are loaded asynchronously.
         /// </summary>
+        /// <remarks>
+        /// This should only be called during Dalamud startup.
+        /// </remarks>
         public void LoadAllPlugins()
         {
             if (this.SafeMode)
@@ -262,8 +259,11 @@ namespace Dalamud.Plugin.Internal
 
             var asyncPlugins = pluginDefs.Where(def => def.Manifest == null || def.Manifest.LoadPriority <= 0);
             Task.Run(() => LoadPlugins(asyncPlugins))
-                .ContinueWith(task => this.PluginsReady = true)
-                .ContinueWith(task => this.NotifyInstalledPluginsChanged());
+                .ContinueWith(task =>
+                {
+                    this.PluginsReady = true;
+                    this.NotifyInstalledPluginsChanged();
+                });
         }
 
         /// <summary>
@@ -273,10 +273,8 @@ namespace Dalamud.Plugin.Internal
         {
             var aggregate = new List<Exception>();
 
-            for (var i = 0; i < this.installedPlugins.Count; i++)
+            foreach (var plugin in this.InstalledPlugins)
             {
-                var plugin = this.installedPlugins[i];
-
                 if (plugin.IsLoaded)
                 {
                     try
@@ -301,25 +299,31 @@ namespace Dalamud.Plugin.Internal
         /// <summary>
         /// Reload the PluginMaster for each repo, filter, and event that the list has updated.
         /// </summary>
-        public void ReloadPluginMasters()
+        /// <param name="notify">Whether to notify that available plugins have changed afterwards.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        public async Task ReloadPluginMastersAsync(bool notify = true)
         {
-            Task.WhenAll(this.Repos.Select(repo => repo.ReloadPluginMasterAsync()))
-                .ContinueWith(task => this.RefilterPluginMasters())
-                .Wait();
+            await Task.WhenAll(this.Repos.Select(repo => repo.ReloadPluginMasterAsync()));
+
+            this.RefilterPluginMasters(notify);
         }
 
         /// <summary>
         /// Apply visibility and eligibility filters to the available plugins, then event that the list has updated.
         /// </summary>
-        public void RefilterPluginMasters()
+        /// <param name="notify">Whether to notify that available plugins have changed afterwards.</param>
+        public void RefilterPluginMasters(bool notify = true)
         {
-            this.availablePlugins = this.Repos
+            this.AvailablePlugins = this.Repos
                 .SelectMany(repo => repo.PluginMaster)
                 .Where(this.IsManifestEligible)
                 .Where(this.IsManifestVisible)
-                .ToList();
+                .ToImmutableList();
 
-            this.NotifyAvailablePluginsChanged();
+            if (notify)
+            {
+                this.NotifyAvailablePluginsChanged();
+            }
         }
 
         /// <summary>
@@ -443,8 +447,8 @@ namespace Dalamud.Plugin.Internal
 
                     if (zipFile.Name.IsNullOrEmpty())
                     {
-                        Log.Error("zipFile.Name is null or empty");
                         // Assuming Empty for Directory
+                        Log.Verbose($"ZipFile name is null or empty, treating as a directory: {outputFile.Directory.FullName}");
                         Directory.CreateDirectory(outputFile.Directory.FullName);
                         continue;
                     }
@@ -541,32 +545,37 @@ namespace Dalamud.Plugin.Internal
                 }
                 catch (InvalidPluginException)
                 {
-                    PluginLocations.Remove(plugin.AssemblyName.FullName);
+                    PluginLocations.Remove(plugin.AssemblyName?.FullName ?? string.Empty);
                     throw;
+                }
+                catch (BannedPluginException)
+                {
+                    // Out of date plugins get added so they can be updated.
+                    Log.Information($"Plugin was banned, adding anyways: {dllFile.Name}");
                 }
                 catch (Exception ex)
                 {
                     if (plugin.IsDev)
                     {
                         // Dev plugins always get added to the list so they can be fiddled with in the UI
-                        Log.Information(ex, $"Dev plugin failed to load, adding anyways:  {dllFile.Name}");
+                        Log.Information(ex, $"Dev plugin failed to load, adding anyways: {dllFile.Name}");
                         plugin.Disable(); // Disable here, otherwise you can't enable+load later
                     }
-                    else if (plugin.Manifest.DalamudApiLevel < DalamudApiLevel)
+                    else if (plugin.IsOutdated)
                     {
                         // Out of date plugins get added so they can be updated.
-                        Log.Information(ex, $"Plugin was outdated, adding anyways:  {dllFile.Name}");
+                        Log.Information(ex, $"Plugin was outdated, adding anyways: {dllFile.Name}");
                         // plugin.Disable(); // Don't disable, or it gets deleted next boot.
                     }
                     else
                     {
-                        PluginLocations.Remove(plugin.AssemblyName.FullName);
+                        PluginLocations.Remove(plugin.AssemblyName?.FullName ?? string.Empty);
                         throw;
                     }
                 }
             }
 
-            this.installedPlugins.Add(plugin);
+            this.InstalledPlugins = this.InstalledPlugins.Add(plugin);
             return plugin;
         }
 
@@ -579,8 +588,8 @@ namespace Dalamud.Plugin.Internal
             if (plugin.State != PluginState.Unloaded)
                 throw new InvalidPluginOperationException($"Unable to remove {plugin.Name}, not unloaded");
 
-            this.installedPlugins.Remove(plugin);
-            PluginLocations.Remove(plugin.AssemblyName.FullName);
+            this.InstalledPlugins = this.InstalledPlugins.Remove(plugin);
+            PluginLocations.Remove(plugin.AssemblyName?.FullName ?? string.Empty);
 
             this.NotifyInstalledPluginsChanged();
             this.NotifyAvailablePluginsChanged();
@@ -681,7 +690,7 @@ namespace Dalamud.Plugin.Internal
         }
 
         /// <summary>
-        /// Update all plugins.
+        /// Update all non-dev plugins.
         /// </summary>
         /// <param name="dryRun">Perform a dry run, don't install anything.</param>
         /// <returns>Success or failure and a list of updated plugin metadata.</returns>
@@ -692,9 +701,13 @@ namespace Dalamud.Plugin.Internal
             var updatedList = new List<PluginUpdateStatus>();
 
             // Prevent collection was modified errors
-            for (var i = 0; i < this.updatablePlugins.Count; i++)
+            foreach (var plugin in this.UpdatablePlugins)
             {
-                var result = await this.UpdateSinglePluginAsync(this.updatablePlugins[i], false, dryRun);
+                // Can't update that!
+                if (plugin.InstalledPlugin.IsDev)
+                    return null;
+
+                var result = await this.UpdateSinglePluginAsync(plugin, false, dryRun);
                 if (result != null)
                     updatedList.Add(result);
             }
@@ -717,25 +730,19 @@ namespace Dalamud.Plugin.Internal
         {
             var plugin = metadata.InstalledPlugin;
 
-            // Can't update that!
-            if (plugin is LocalDevPlugin)
-                return null;
-
             var updateStatus = new PluginUpdateStatus
             {
                 InternalName = plugin.Manifest.InternalName,
                 Name = plugin.Manifest.Name,
-                Version = metadata.UseTesting ? metadata.UpdateManifest.TestingAssemblyVersion : metadata.UpdateManifest.AssemblyVersion,
+                Version = metadata.UseTesting
+                    ? metadata.UpdateManifest.TestingAssemblyVersion
+                    : metadata.UpdateManifest.AssemblyVersion,
             };
 
-            if (dryRun)
-            {
-                updateStatus.WasUpdated = true;
-            }
-            else
-            {
-                updateStatus.WasUpdated = true;
+            updateStatus.WasUpdated = true;
 
+            if (!dryRun)
+            {
                 // Unload if loaded
                 if (plugin.State == PluginState.Loaded || plugin.State == PluginState.LoadError)
                 {
@@ -751,16 +758,33 @@ namespace Dalamud.Plugin.Internal
                     }
                 }
 
-                try
+                if (plugin.IsDev)
                 {
-                    plugin.Disable();
-                    this.installedPlugins.Remove(plugin);
+                    try
+                    {
+                        plugin.DllFile.Delete();
+                        this.InstalledPlugins = this.InstalledPlugins.Remove(plugin);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Error during delete (update)");
+                        updateStatus.WasUpdated = false;
+                        return updateStatus;
+                    }
                 }
-                catch (Exception ex)
+                else
                 {
-                    Log.Error(ex, "Error during disable (update)");
-                    updateStatus.WasUpdated = false;
-                    return updateStatus;
+                    try
+                    {
+                        plugin.Disable();
+                        this.InstalledPlugins = this.InstalledPlugins.Remove(plugin);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Error during disable (update)");
+                        updateStatus.WasUpdated = false;
+                        return updateStatus;
+                    }
                 }
 
                 try
@@ -917,7 +941,12 @@ namespace Dalamud.Plugin.Internal
             return true;
         }
 
-        private bool IsManifestBanned(PluginManifest manifest)
+        /// <summary>
+        /// Determine if a plugin has been banned by inspecting the manifest.
+        /// </summary>
+        /// <param name="manifest">Manifest to inspect.</param>
+        /// <returns>A value indicating whether the plugin/manifest has been banned.</returns>
+        public bool IsManifestBanned(PluginManifest manifest)
         {
             return this.bannedPlugins.Any(ban => ban.Name == manifest.InternalName && ban.AssemblyVersion == manifest.AssemblyVersion);
         }
@@ -926,15 +955,13 @@ namespace Dalamud.Plugin.Internal
         {
             var updatablePlugins = new List<AvailablePluginUpdate>();
 
-            for (var i = 0; i < this.installedPlugins.Count; i++)
+            foreach (var plugin in this.InstalledPlugins)
             {
-                var plugin = this.installedPlugins[i];
-
                 var installedVersion = plugin.IsTesting
                     ? plugin.Manifest.TestingAssemblyVersion
                     : plugin.Manifest.AssemblyVersion;
 
-                var updates = this.availablePlugins
+                var updates = this.AvailablePlugins
                     .Where(remoteManifest => plugin.Manifest.InternalName == remoteManifest.InternalName)
                     .Select(remoteManifest =>
                     {
@@ -956,7 +983,7 @@ namespace Dalamud.Plugin.Internal
                 }
             }
 
-            this.updatablePlugins = updatablePlugins;
+            this.UpdatablePlugins = updatablePlugins.ToImmutableList();
         }
 
         private void NotifyAvailablePluginsChanged()
@@ -965,8 +992,6 @@ namespace Dalamud.Plugin.Internal
 
             try
             {
-                this.AvailablePlugins = ImmutableList.CreateRange(this.availablePlugins);
-                this.UpdatablePlugins = ImmutableList.CreateRange(this.updatablePlugins);
                 this.OnAvailablePluginsChanged?.Invoke();
             }
             catch (Exception ex)
@@ -981,8 +1006,6 @@ namespace Dalamud.Plugin.Internal
 
             try
             {
-                this.InstalledPlugins = ImmutableList.CreateRange(this.installedPlugins);
-                this.UpdatablePlugins = ImmutableList.CreateRange(this.updatablePlugins);
                 this.OnInstalledPluginsChanged?.Invoke();
             }
             catch (Exception ex)

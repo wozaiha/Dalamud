@@ -10,7 +10,7 @@ HMODULE g_hModule;
 
 DllExport DWORD WINAPI Initialize(LPVOID lpParam)
 {
-    #if !defined(NDEBUG)
+    #ifndef NDEBUG
     ConsoleSetup(L"Dalamud Boot");
     #endif
 
@@ -46,7 +46,10 @@ DllExport DWORD WINAPI Initialize(LPVOID lpParam)
 
     // =========================================================================== //
 
-    #if !defined(NDEBUG)
+    #ifndef NDEBUG
+    fclose(stdin);
+    fclose(stdout);
+    fclose(stderr);
     FreeConsole();
     #endif
 

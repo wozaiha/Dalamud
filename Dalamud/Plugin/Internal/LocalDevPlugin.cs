@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Dalamud.Configuration.Internal;
+using Dalamud.Interface.Internal.Notifications;
 using Dalamud.Logging.Internal;
 using Dalamud.Plugin.Internal.Types;
 
@@ -144,7 +145,18 @@ namespace Dalamud.Plugin.Internal
                         return;
                     }
 
-                    this.Reload();
+                    var notificationManager = Service<NotificationManager>.Get();
+
+                    try
+                    {
+                        this.Reload();
+                        notificationManager.AddNotification($"The DevPlugin '{this.Name} was reloaded successfully.", "Plugin reloaded!", NotificationType.Success);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "DevPlugin reload failed.");
+                        notificationManager.AddNotification($"The DevPlugin '{this.Name} could not be reloaded.", "Plugin reload failed!", NotificationType.Error);
+                    }
                 },
                 this.fileWatcherTokenSource.Token);
         }
