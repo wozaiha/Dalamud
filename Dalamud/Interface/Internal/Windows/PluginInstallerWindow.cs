@@ -1810,7 +1810,7 @@ namespace Dalamud.Interface.Internal.Windows
             var url = GetPluginIconUrl(manifest, isThirdParty, useTesting);
             if (url != null)
             {
-                Log.Verbose($"Downloading icon for {manifest.InternalName} from {url}");
+                Log.Verbose($"Downloading icon for {manifest.InternalName} from {Util.FuckGFW(url)}");
 
                 var data = await this.httpClient.GetAsync(Util.FuckGFW(url));
                 if (data.StatusCode == HttpStatusCode.NotFound)
@@ -1900,11 +1900,9 @@ namespace Dalamud.Interface.Internal.Windows
                 {
                     var url = urls[i];
 
-                    Log.Verbose($"Downloading image{i + 1} for {manifest.InternalName} from {url}");
+                    Log.Verbose($"Downloading image{i + 1} for {manifest.InternalName} from {Util.FuckGFW(url)}");
 
-                    var data = await this.httpClient.GetAsync(Util.FuckGFW(urls[i]));
-
-                    Serilog.Log.Information($"Download from {Util.FuckGFW(urls[i])}");
+                    var data = await this.httpClient.GetAsync(Util.FuckGFW(url));
 
                     if (data.StatusCode == HttpStatusCode.NotFound)
                         continue;
@@ -1912,12 +1910,6 @@ namespace Dalamud.Interface.Internal.Windows
                     data.EnsureSuccessStatusCode();
 
                     var image = interfaceManager.LoadImage(await data.Content.ReadAsByteArrayAsync());
-                    
-                    if (image.Height != PluginImageHeight || image.Width != PluginImageWidth)
-                    {
-                        Log.Error($"Image at {Util.FuckGFW(urls[i])} was not of the correct resolution.");
-                        return;
-                    }
 
                     if (!ValidateImage(image, url))
                         continue;
