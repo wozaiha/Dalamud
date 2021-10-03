@@ -2085,13 +2085,10 @@ namespace Dalamud.Interface.Internal.Windows
             {
                 Log.Verbose($"Downloading icon for {manifest.InternalName} from {Util.FuckGFW(url)}");
 
-<<<<<<< HEAD
-                var data = await this.httpClient.GetAsync(Util.FuckGFW(url));
-=======
                 HttpResponseMessage data;
                 try
                 {
-                    data = await this.httpClient.GetAsync(url);
+                    data = await this.httpClient.GetAsync(Util.FuckGFW(url));
                 }
                 catch (InvalidOperationException)
                 {
@@ -2099,7 +2096,6 @@ namespace Dalamud.Interface.Internal.Windows
                     return;
                 }
 
->>>>>>> master
                 if (data.StatusCode == HttpStatusCode.NotFound)
                     return;
 
@@ -2194,20 +2190,16 @@ namespace Dalamud.Interface.Internal.Windows
 
                     Log.Verbose($"Downloading image{i + 1} for {manifest.InternalName} from {Util.FuckGFW(url)}");
 
-<<<<<<< HEAD
-                    var data = await this.httpClient.GetAsync(Util.FuckGFW(url));
-=======
                     HttpResponseMessage data;
                     try
                     {
-                        data = await this.httpClient.GetAsync(url);
+                        data = await this.httpClient.GetAsync(Util.FuckGFW(url));
                     }
                     catch (InvalidOperationException)
                     {
                         Log.Error($"Plugin image{i + 1} for {manifest.InternalName} has an Invalid URI");
                         continue;
                     }
->>>>>>> master
 
                     if (data.StatusCode == HttpStatusCode.NotFound)
                         continue;

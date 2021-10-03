@@ -208,7 +208,6 @@ namespace Dalamud.Utility
         }
 
         /// <summary>
-<<<<<<< HEAD
         /// This is a FUCK-GFW replacement of urls.
         /// </summary>
         /// <param name="url">A url to be fucked.</param>
@@ -223,7 +222,8 @@ namespace Dalamud.Utility
             if (startInfo.GlobalAccelerate)
                 url = Regex.Replace(url, @"cos\.ap-nanjing\.myqcloud\.com", "cos.accelerate.myqcloud.com");
             return url;
-=======
+        }
+
         ///     Compress a string using GZip.
         /// </summary>
         /// <param name="str">The input string.</param>
@@ -275,7 +275,6 @@ namespace Dalamud.Utility
             int cnt;
 
             while ((cnt = src.Read(bytes, 0, bytes.Length)) != 0) dest.Write(bytes, 0, cnt);
->>>>>>> master
         }
 
         // TODO: Someone implement GetUTF8String with some IntPtr overloads.
