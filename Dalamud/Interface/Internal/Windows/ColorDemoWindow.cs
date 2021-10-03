@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Reflection;
 
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Windowing;
@@ -33,9 +34,18 @@ namespace Dalamud.Interface.Internal.Windows
                 ("DalamudWhite", ImGuiColors.DalamudWhite),
                 ("DalamudWhite2", ImGuiColors.DalamudWhite2),
                 ("DalamudOrange", ImGuiColors.DalamudOrange),
+                ("DalamudYellow", ImGuiColors.DalamudYellow),
+                ("DalamudViolet", ImGuiColors.DalamudViolet),
                 ("TankBlue", ImGuiColors.TankBlue),
                 ("HealerGreen", ImGuiColors.HealerGreen),
                 ("DPSRed", ImGuiColors.DPSRed),
+                ("ParsedGrey", ImGuiColors.ParsedGrey),
+                ("ParsedGreen", ImGuiColors.ParsedGreen),
+                ("ParsedBlue", ImGuiColors.ParsedBlue),
+                ("ParsedPurple", ImGuiColors.ParsedPurple),
+                ("ParsedOrange", ImGuiColors.ParsedOrange),
+                ("ParsedPink", ImGuiColors.ParsedPink),
+                ("ParsedGold", ImGuiColors.ParsedGold),
             }.OrderBy(colorDemo => colorDemo.Name).ToList();
         }
 
@@ -46,9 +56,10 @@ namespace Dalamud.Interface.Internal.Windows
 
             ImGui.Separator();
 
-            foreach (var (name, color) in this.colors)
+            foreach (var property in typeof(ImGuiColors).GetProperties(BindingFlags.Public | BindingFlags.Static))
             {
-                ImGui.TextColored(color, name);
+                var color = (Vector4)property.GetValue(null);
+                ImGui.TextColored(color, property.Name);
             }
         }
     }

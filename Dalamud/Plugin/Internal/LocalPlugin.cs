@@ -8,8 +8,8 @@ using Dalamud.Game;
 using Dalamud.IoC.Internal;
 using Dalamud.Logging.Internal;
 using Dalamud.Plugin.Internal.Exceptions;
+using Dalamud.Plugin.Internal.Loader;
 using Dalamud.Plugin.Internal.Types;
-using McMaster.NETCore.Plugins;
 
 namespace Dalamud.Plugin.Internal
 {
@@ -37,17 +37,18 @@ namespace Dalamud.Plugin.Internal
         /// <param name="manifest">The plugin manifest.</param>
         public LocalPlugin(FileInfo dllFile, LocalPluginManifest? manifest)
         {
+            if (dllFile.Name == "FFXIVClientStructs.Generators.dll")
+            {
+                // Could this be done another way? Sure. It is an extremely common source
+                // of errors in the log through, and should never be loaded as a plugin.
+                Log.Error($"Not a plugin: {dllFile.FullName}");
+                throw new InvalidPluginException(dllFile);
+            }
+
             this.DllFile = dllFile;
             this.State = PluginState.Unloaded;
 
-            this.loader = PluginLoader.CreateFromAssemblyFile(
-                this.DllFile.FullName,
-                config =>
-                {
-                    config.IsUnloadable = true;
-                    config.LoadInMemory = true;
-                    config.PreferSharedTypes = true;
-                });
+            this.loader = PluginLoader.CreateFromAssemblyFile(this.DllFile.FullName, this.SetupLoaderConfig);
 
             try
             {
@@ -250,16 +251,19 @@ namespace Dalamud.Plugin.Internal
             this.State = PluginState.InProgress;
             Log.Information($"Loading {this.DllFile.Name}");
 
+            if (this.DllFile.DirectoryName != null && File.Exists(Path.Combine(this.DllFile.DirectoryName, "Dalamud.dll")))
+            {
+                Log.Error("==== IMPORTANT MESSAGE TO {0}, THE DEVELOPER OF {1} ====", this.Manifest.Author, this.Manifest.InternalName);
+                Log.Error("YOU ARE INCLUDING DALAMUD DEPENDENCIES IN YOUR BUILDS!!!");
+                Log.Error("You may not be able to load your plugin. \"<Private>False</Private>\" needs to be set in your csproj.");
+                Log.Error("If you are using ILMerge, do not merge anything other than your direct dependencies.");
+                Log.Error("Do not merge FFXIVClientStructs.Generators.dll.");
+                Log.Error("Please refer to https://github.com/goatcorp/Dalamud/discussions/603 for more information.");
+            }
+
             try
             {
-                this.loader ??= PluginLoader.CreateFromAssemblyFile(
-                    this.DllFile.FullName,
-                    config =>
-                    {
-                        config.IsUnloadable = true;
-                        config.LoadInMemory = true;
-                        config.PreferSharedTypes = true;
-                    });
+                this.loader ??= PluginLoader.CreateFromAssemblyFile(this.DllFile.FullName, this.SetupLoaderConfig);
 
                 if (reloading)
                 {
@@ -435,6 +439,15 @@ namespace Dalamud.Plugin.Internal
 
             this.Manifest.Disabled = true;
             this.SaveManifest();
+        }
+
+        private void SetupLoaderConfig(LoaderConfig config)
+        {
+            config.IsUnloadable = true;
+            config.LoadInMemory = true;
+            config.PreferSharedTypes = false;
+            config.SharedAssemblies.Add(typeof(Lumina.GameData).Assembly.GetName());
+            config.SharedAssemblies.Add(typeof(Lumina.Excel.ExcelSheetImpl).Assembly.GetName());
         }
 
         private void SaveManifest() => this.Manifest.Save(this.manifestFile);
