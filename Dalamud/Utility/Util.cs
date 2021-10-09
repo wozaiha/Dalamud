@@ -223,7 +223,6 @@ namespace Dalamud.Utility
                 url = Regex.Replace(url, @"cos\.ap-nanjing\.myqcloud\.com", "cos.accelerate.myqcloud.com");
             return url;
         }
-        
         ///     Compress a string using GZip.
         /// </summary>
         /// <param name="str">The input string.</param>
