@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 using System.Numerics;
 
@@ -5,6 +6,7 @@ using Dalamud.Interface.Colors;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
 using ImGuiNET;
+using Serilog;
 
 namespace Dalamud.Interface.Internal.Windows
 {
@@ -19,21 +21,22 @@ namespace Dalamud.Interface.Internal.Windows
         public const string WarrantsChangelogForMajorMinor = "6.0.";
 
         private const string ChangeLog =
-            @"This is the biggest update of the in-game addon to date.
-We have redone most of the underlying systems, providing you with a better experience playing and browsing for plugins, including better performance, and developers with a better API and more comfortable development environment.
+            @"这是迄今为止卫月插件框架的最大更新。
+我们重做了大部分底层系统，为您提供更好的插件运行和浏览体验，包括更好的性能，以及更好的API和更舒适的开发环境。
 
-We have also added some new features:
-• Redesigned plugin installer, featuring icons, screenshots, and filterable categories
-• A new look for Dalamud windows and a style editor that lets you adjust colors & other variables to your liking
-• Pressing Escape in-game will now close the focused Dalamud window and keep game windows open, until all windows are closed, to unify behaviour with the game windows (you can disable this in the settings)
+我们还添加了一些新功能：
+• 重新设计的插件安装程序，具有图标、屏幕截图和可过滤的类别
+• 卫月窗口的新外观和样式编辑器，可让您根据自己的喜好调整颜色和其他变量
+• 在游戏中按下 ESC 将关闭激活的卫月窗口并保持游戏窗口打开，直到所有窗口关闭，从而统一游戏窗口的行为（您可以在设置中禁用此功能）
+• 提供了卫月窗口的输入法
 
-If you note any issues or need help, please make sure to ask on our discord server.";
+如果您发现任何问题或需要帮助，请务必在我们的 Discord 服务器或 QQ 群里询问。";
 
         private const string UpdatePluginsInfo =
-            @"• All of your plugins were disabled automatically, due to this update. This is normal.
-• Open the plugin installer, then click 'update plugins'. Updated plugins should update and then re-enable themselves.
-   => Please keep in mind that not all of your plugins may already be updated for the new version.
-   => If some plugins are displayed with a red cross in the 'Installed Plugins' tab, they may not yet be available.";
+            @"• 由于此更新，您的所有插件都已自动禁用。 这是正常的。
+• 打开插件安装程序，然后单击“更新插件”。 更新的插件应该更新然后重新启用自己。
+    => 请记住，并非您的所有插件都已针对新版本进行了更新。
+    => 如果某些插件在“已安装插件”选项卡中显示为红色叉号，则它们可能尚不可用。";
 
         private readonly string assemblyVersion = Util.AssemblyVersion;
 
@@ -41,7 +44,7 @@ If you note any issues or need help, please make sure to ask on our discord serv
         /// Initializes a new instance of the <see cref="ChangelogWindow"/> class.
         /// </summary>
         public ChangelogWindow()
-            : base("What's new in XIVLauncher?")
+            : base("有啥新功能？？")
         {
             this.Namespace = "DalamudChangelogWindow";
 
@@ -56,12 +59,12 @@ If you note any issues or need help, please make sure to ask on our discord serv
 
             ImGuiHelpers.ScaledDummy(10);
 
-            ImGui.Text("The following changes were introduced:");
+            ImGui.Text("包含了以下更新:");
             ImGui.TextWrapped(ChangeLog);
 
             ImGuiHelpers.ScaledDummy(5);
 
-            ImGui.TextColored(ImGuiColors.DalamudRed, " !!! ATTENTION !!!");
+            ImGui.TextColored(ImGuiColors.DalamudRed, " !!! 注意 !!!");
 
             ImGui.TextWrapped(UpdatePluginsInfo);
 
@@ -81,7 +84,7 @@ If you note any issues or need help, please make sure to ask on our discord serv
             if (ImGui.IsItemHovered())
             {
                 ImGui.PopFont();
-                ImGui.SetTooltip("Open Plugin Installer");
+                ImGui.SetTooltip("打开插件安装器");
                 ImGui.PushFont(UiBuilder.IconFont);
             }
 
@@ -89,13 +92,49 @@ If you note any issues or need help, please make sure to ask on our discord serv
 
             if (ImGui.Button(FontAwesomeIcon.LaughBeam.ToIconString()))
             {
-                Process.Start("https://discord.gg/3NMcUV5");
+                try
+                {
+                    Process.Start(new ProcessStartInfo()
+                    {
+                        FileName = "https://discord.gg/3NMcUV5",
+                        UseShellExecute = true,
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Could not open discord url");
+                }
             }
 
             if (ImGui.IsItemHovered())
             {
                 ImGui.PopFont();
-                ImGui.SetTooltip("Join our Discord server");
+                ImGui.SetTooltip("加入我们的 Discord 服务器");
+                ImGui.PushFont(UiBuilder.IconFont);
+            }
+
+            ImGui.SameLine();
+
+            if (ImGui.Button(FontAwesomeIcon.LaughSquint.ToIconString()))
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo()
+                    {
+                        FileName = "https://jq.qq.com/?_wv=1027&k=3un8iHCo",
+                        UseShellExecute = true,
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Could not open QQ url");
+                }
+            }
+
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.PopFont();
+                ImGui.SetTooltip("加入我们的 QQ 群 827725124");
                 ImGui.PushFont(UiBuilder.IconFont);
             }
 
@@ -103,7 +142,18 @@ If you note any issues or need help, please make sure to ask on our discord serv
 
             if (ImGui.Button(FontAwesomeIcon.Globe.ToIconString()))
             {
-                Process.Start("https://github.com/goatcorp/FFXIVQuickLauncher");
+                try
+                {
+                    Process.Start(new ProcessStartInfo()
+                    {
+                        FileName = "https://github.com/goatcorp/FFXIVQuickLauncher",
+                        UseShellExecute = true,
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Could not open github repo url");
+                }
             }
 
             if (ImGui.IsItemHovered())
