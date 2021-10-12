@@ -40,6 +40,7 @@ namespace Dalamud.Updater
             this.linkLabel1 = new System.Windows.Forms.LinkLabel();
             this.checkBoxAcce = new System.Windows.Forms.CheckBox();
             this.linkLabel2 = new System.Windows.Forms.LinkLabel();
+            this.checkBoxAutoInject = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // buttonCheckForUpdate
@@ -47,7 +48,7 @@ namespace Dalamud.Updater
             this.buttonCheckForUpdate.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.buttonCheckForUpdate.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.buttonCheckForUpdate.Location = new System.Drawing.Point(12, 98);
+            this.buttonCheckForUpdate.Location = new System.Drawing.Point(12, 93);
             this.buttonCheckForUpdate.Name = "buttonCheckForUpdate";
             this.buttonCheckForUpdate.Size = new System.Drawing.Size(196, 40);
             this.buttonCheckForUpdate.TabIndex = 0;
@@ -70,7 +71,7 @@ namespace Dalamud.Updater
             this.buttonCheckRuntime.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.buttonCheckRuntime.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.buttonCheckRuntime.Location = new System.Drawing.Point(12, 52);
+            this.buttonCheckRuntime.Location = new System.Drawing.Point(12, 47);
             this.buttonCheckRuntime.Name = "buttonCheckRuntime";
             this.buttonCheckRuntime.Size = new System.Drawing.Size(196, 40);
             this.buttonCheckRuntime.TabIndex = 0;
@@ -84,7 +85,7 @@ namespace Dalamud.Updater
             this.comboBoxFFXIV.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.comboBoxFFXIV.FormattingEnabled = true;
             this.comboBoxFFXIV.ImeMode = System.Windows.Forms.ImeMode.On;
-            this.comboBoxFFXIV.Location = new System.Drawing.Point(12, 144);
+            this.comboBoxFFXIV.Location = new System.Drawing.Point(12, 179);
             this.comboBoxFFXIV.Name = "comboBoxFFXIV";
             this.comboBoxFFXIV.Size = new System.Drawing.Size(196, 23);
             this.comboBoxFFXIV.TabIndex = 2;
@@ -95,7 +96,7 @@ namespace Dalamud.Updater
             this.buttonInject.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.buttonInject.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.buttonInject.Location = new System.Drawing.Point(12, 173);
+            this.buttonInject.Location = new System.Drawing.Point(12, 208);
             this.buttonInject.Name = "buttonInject";
             this.buttonInject.Size = new System.Drawing.Size(196, 89);
             this.buttonInject.TabIndex = 0;
@@ -106,7 +107,7 @@ namespace Dalamud.Updater
             // linkLabel1
             // 
             this.linkLabel1.AutoSize = true;
-            this.linkLabel1.Location = new System.Drawing.Point(158, 281);
+            this.linkLabel1.Location = new System.Drawing.Point(161, 303);
             this.linkLabel1.Name = "linkLabel1";
             this.linkLabel1.Size = new System.Drawing.Size(64, 15);
             this.linkLabel1.TabIndex = 3;
@@ -117,7 +118,7 @@ namespace Dalamud.Updater
             // checkBoxAcce
             // 
             this.checkBoxAcce.AutoSize = true;
-            this.checkBoxAcce.Location = new System.Drawing.Point(134, 22);
+            this.checkBoxAcce.Location = new System.Drawing.Point(12, 154);
             this.checkBoxAcce.Name = "checkBoxAcce";
             this.checkBoxAcce.Size = new System.Drawing.Size(78, 19);
             this.checkBoxAcce.TabIndex = 4;
@@ -127,7 +128,7 @@ namespace Dalamud.Updater
             // linkLabel2
             // 
             this.linkLabel2.AutoSize = true;
-            this.linkLabel2.Location = new System.Drawing.Point(-2, 281);
+            this.linkLabel2.Location = new System.Drawing.Point(-2, 303);
             this.linkLabel2.Name = "linkLabel2";
             this.linkLabel2.Size = new System.Drawing.Size(59, 15);
             this.linkLabel2.TabIndex = 3;
@@ -135,11 +136,23 @@ namespace Dalamud.Updater
             this.linkLabel2.Text = "投喂小獭";
             this.linkLabel2.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.linkLabel2_LinkClicked);
             // 
+            // checkBoxAutoInject
+            // 
+            this.checkBoxAutoInject.AutoSize = true;
+            this.checkBoxAutoInject.Location = new System.Drawing.Point(130, 154);
+            this.checkBoxAutoInject.Name = "checkBoxAutoInject";
+            this.checkBoxAutoInject.Size = new System.Drawing.Size(78, 19);
+            this.checkBoxAutoInject.TabIndex = 4;
+            this.checkBoxAutoInject.Text = "自动注入";
+            this.checkBoxAutoInject.UseVisualStyleBackColor = true;
+            this.checkBoxAutoInject.CheckedChanged += new System.EventHandler(this.checkBox1_CheckedChanged);
+            // 
             // FormMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(220, 295);
+            this.ClientSize = new System.Drawing.Size(220, 315);
+            this.Controls.Add(this.checkBoxAutoInject);
             this.Controls.Add(this.checkBoxAcce);
             this.Controls.Add(this.linkLabel2);
             this.Controls.Add(this.linkLabel1);
@@ -172,6 +185,7 @@ namespace Dalamud.Updater
         private System.Windows.Forms.LinkLabel linkLabel1;
         private System.Windows.Forms.CheckBox checkBoxAcce;
         private System.Windows.Forms.LinkLabel linkLabel2;
+        private System.Windows.Forms.CheckBox checkBoxAutoInject;
     }
 }
 

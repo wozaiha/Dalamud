@@ -215,12 +215,18 @@ namespace Dalamud.Utility
         public static string FuckGFW(string url)
         {
             if (url == null) return null;
-            url = Regex.Replace(url, @"^https:\/\/raw\.githubusercontent\.com", "https://raw.fastgit.org");
-            url = Regex.Replace(url, @"^https:\/\/(?:gitee|github)\.com\/(.*)?\/(.*)?\/raw", "https://raw.fastgit.org/$1/$2");
-            url = Regex.Replace(url, @"^https:\/\/github\.com\/(.*)?\/(.*)?\/releases\/download", "https://download.fastgit.org/$1/$2/releases/download/");
             var startInfo = Service<DalamudStartInfo>.Get();
-            if (startInfo.GlobalAccelerate)
+            if (!startInfo.GlobalAccelerate)
+            {
+                url = Regex.Replace(url, @"^https:\/\/raw\.githubusercontent\.com", "https://raw.fastgit.org");
+                url = Regex.Replace(url, @"^https:\/\/(?:gitee|github)\.com\/(.*)?\/(.*)?\/raw", "https://raw.fastgit.org/$1/$2");
+                url = Regex.Replace(url, @"^https:\/\/github\.com\/(.*)?\/(.*)?\/releases\/download", "https://download.fastgit.org/$1/$2/releases/download/");
+            }
+            else
+            {
                 url = Regex.Replace(url, @"cos\.ap-nanjing\.myqcloud\.com", "cos.accelerate.myqcloud.com");
+            }
+
             return url;
         }
 
