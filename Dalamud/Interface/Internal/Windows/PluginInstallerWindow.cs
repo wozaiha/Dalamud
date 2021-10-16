@@ -1061,19 +1061,10 @@ namespace Dalamud.Interface.Internal.Windows
             ImGui.SetCursorPos(startCursor);
 
             var iconTex = this.defaultIcon;
-            var hasIcon = this.pluginIconMap.TryGetValue(manifest.InternalName, out var cachedIconTex);
-            if (!hasIcon)
-            {
-                this.pluginIconMap.Add(manifest.InternalName, null);
-                Task.Run(async () => await this.DownloadPluginIconAsync(plugin, manifest, isThirdParty));
-            }
-            else if (cachedIconTex != null)
+
+            if (this.pluginIconMap.TryGetValue(manifest.InternalName, out var cachedIconTex) && cachedIconTex != null)
             {
                 iconTex = cachedIconTex;
-            }
-            else
-            {
-                // nothing
             }
 
             var iconSize = ImGuiHelpers.ScaledVector2(64, 64);
@@ -1431,7 +1422,7 @@ namespace Dalamud.Interface.Internal.Windows
                     ImGui.TextWrapped(manifest.Description);
                 }
 
-                if (plugin.IsOutdated)
+                if (plugin.IsOutdated && !plugin.IsBanned)
                 {
                     ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.DalamudRed);
                     ImGui.TextWrapped(Locs.PluginBody_Outdated);
@@ -1441,7 +1432,10 @@ namespace Dalamud.Interface.Internal.Windows
                 if (plugin.IsBanned)
                 {
                     ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.DalamudRed);
-                    ImGui.TextWrapped(Locs.PluginBody_Banned);
+                    ImGui.TextWrapped(plugin.BanReason.IsNullOrEmpty()
+                                          ? Locs.PluginBody_Banned
+                                          : Locs.PluginBody_BannedReason(plugin.BanReason));
+
                     ImGui.PopStyleColor();
                 }
 
@@ -1828,7 +1822,14 @@ namespace Dalamud.Interface.Internal.Windows
             if (!hasImages)
             {
                 this.pluginImagesMap.Add(manifest.InternalName, Array.Empty<TextureWrap>());
-                Task.Run(async () => await this.DownloadPluginImagesAsync(plugin, manifest, isThirdParty));
+                Task.Run(async () => await this.DownloadPluginImagesAsync(plugin, manifest, isThirdParty))
+                    .ContinueWith(task =>
+                    {
+                        if (task.IsFaulted)
+                        {
+                            Log.Error(task.Exception.InnerException, "An unhandled exception occurred in the plugin image downloader");
+                        }
+                    });
 
                 return false;
             }
@@ -1937,6 +1938,7 @@ namespace Dalamud.Interface.Internal.Windows
             this.ResortPlugins();
 
             this.UpdateCategoriesOnPluginsChange();
+            Task.Run(() => this.DownloadPluginIconsAsync(this.pluginListAvailable.ToArray()));
         }
 
         private void OnInstalledPluginsChanged()
@@ -2028,7 +2030,17 @@ namespace Dalamud.Interface.Internal.Windows
             this.errorModalOnNextFrame = true;
         }
 
-        private async Task DownloadPluginIconAsync(LocalPlugin? plugin, PluginManifest manifest, bool isThirdParty)
+        private async Task DownloadPluginIconsAsync(RemotePluginManifest[] plugins)
+        {
+            Log.Verbose("Starting icon download...");
+            foreach (var plugin in plugins.Where(x => !this.pluginIconMap.ContainsKey(x.InternalName)))
+            {
+                this.pluginIconMap[plugin.InternalName] = null;
+                await this.DownloadPluginIconAsync(plugin, plugin.SourceRepo.IsThirdParty);
+            }
+        }
+
+        private async Task DownloadPluginIconAsync(PluginManifest manifest, bool isThirdParty)
         {
             var interfaceManager = Service<InterfaceManager>.Get();
             var pluginManager = Service<PluginManager>.Get();
@@ -2058,26 +2070,6 @@ namespace Dalamud.Interface.Internal.Windows
                 return true;
             }
 
-            if (plugin != null && plugin.IsDev)
-            {
-                var file = this.GetPluginIconFileInfo(plugin);
-                if (file != null)
-                {
-                    Log.Verbose($"Fetching icon for {manifest.InternalName} from {file.FullName}");
-
-                    var bytes = await File.ReadAllBytesAsync(file.FullName);
-                    if (!TryLoadIcon(bytes, file.FullName, manifest, interfaceManager, out var icon))
-                        return;
-
-                    this.pluginIconMap[manifest.InternalName] = icon;
-                    Log.Verbose($"Plugin icon for {manifest.InternalName} loaded from disk");
-                }
-
-                // Dev plugins are likely going to look like a main repo plugin, the InstalledFrom field is going to be null.
-                // So instead, set the value manually so we download from the urls specified.
-                isThirdParty = true;
-            }
-
             var useTesting = pluginManager.UseTesting(manifest);
             var url = this.GetPluginIconUrl(manifest, isThirdParty, useTesting);
             if (url != null)
@@ -2092,6 +2084,11 @@ namespace Dalamud.Interface.Internal.Windows
                 catch (InvalidOperationException)
                 {
                     Log.Error($"Plugin icon for {manifest.InternalName} has an Invalid URI");
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"An unexpected error occurred with the icon for {manifest.InternalName}");
                     return;
                 }
 
@@ -2201,6 +2198,11 @@ namespace Dalamud.Interface.Internal.Windows
                     catch (InvalidOperationException)
                     {
                         Log.Error($"Plugin image{i + 1} for {manifest.InternalName} has an Invalid URI");
+                        continue;
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, $"An unexpected error occurred with image{i + 1} for {manifest.InternalName}");
                         continue;
                     }
 
@@ -2436,6 +2438,9 @@ namespace Dalamud.Interface.Internal.Windows
             public static string PluginBody_Outdated => Loc.Localize("InstallerOutdatedPluginBody ", "This plugin is outdated and incompatible at the moment. Please wait for it to be updated by its author.");
 
             public static string PluginBody_Banned => Loc.Localize("InstallerBannedPluginBody ", "This plugin version is banned due to incompatibilities and not available at the moment. Please wait for it to be updated by its author.");
+
+            public static string PluginBody_BannedReason(string message) =>
+                Loc.Localize("InstallerBannedPluginBodyReason ", "This plugin is banned: {0}").Format(message);
 
             #endregion
 
