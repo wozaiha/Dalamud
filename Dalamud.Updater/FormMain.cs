@@ -112,7 +112,7 @@ namespace Dalamud.Updater
                     this.DalamudUpdaterIcon.ShowBalloonTip(2000, "自启动成功", "放心，我会在后台偷偷干活的。", ToolTipIcon.Info);
                 }
             }
-            labelVersion.Text = string.Format("当前版本 : {0}", getVersion());
+            labelVersion.Text = string.Format("卫月版本 : {0}", getVersion());
         }
 
         #region Initialize
@@ -151,7 +151,7 @@ namespace Dalamud.Updater
                     var newHash = String.Join(", ", newPidList).GetHashCode();
                     var oldPidList = this.comboBoxFFXIV.Items.Cast<Object>().Select(item => item.ToString()).ToArray();
                     var oldHash = String.Join(", ", oldPidList).GetHashCode();
-                    if (oldHash != newHash)
+                    if (oldHash != newHash && this.comboBoxFFXIV.IsHandleCreated)
                     {
                         this.comboBoxFFXIV.Invoke((MethodInvoker)delegate {
                             // Running on the UI thread
@@ -213,6 +213,7 @@ namespace Dalamud.Updater
         {
             e.Cancel = true;
             this.WindowState = FormWindowState.Minimized;
+            this.FormBorderStyle = FormBorderStyle.SizableToolWindow;
             this.ShowInTaskbar = false;
             if (firstHideHint)
             {
@@ -228,6 +229,7 @@ namespace Dalamud.Updater
                 if (this.WindowState == FormWindowState.Minimized)
                 {
                     this.WindowState = FormWindowState.Normal;
+                    this.FormBorderStyle = FormBorderStyle.FixedDialog;
                     this.ShowInTaskbar = true;
                 }
                 this.Activate();
