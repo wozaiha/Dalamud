@@ -26,7 +26,7 @@ namespace Dalamud.Updater
     {
         private string updateUrl = "https://dalamud-1253720819.cos.ap-nanjing.myqcloud.com/update.xml";
 
-        private List<string> pidList = new List<string>();
+        // private List<string> pidList = new List<string>();
         private bool isThreadRunning = true;
         private Version getVersion()
         {
@@ -55,22 +55,36 @@ namespace Dalamud.Updater
 
         private void InitializePIDCheck()
         {
-            this.pidList = Process.GetProcessesByName("ffxiv_dx11").ToList()
-                            .ConvertAll(process => process.Id.ToString());
-            this.comboBoxFFXIV.Items.AddRange(this.pidList.ToArray());
-            if (this.pidList.Count > 0)
-            {
-                this.comboBoxFFXIV.SelectedIndex = this.comboBoxFFXIV.FindStringExact(this.pidList[0]);
-            }
             var thread = new Thread(() => {
                 while (this.isThreadRunning)
                 {
                     var newPidList = Process.GetProcessesByName("ffxiv_dx11").ToList()
-                                    .ConvertAll(process => process.Id.ToString());
-                    if (newPidList.GetHashCode() != this.pidList.GetHashCode())
+                                    .ConvertAll(process => process.Id.ToString()).ToArray();
+                    var newHash = String.Join(", ", newPidList).GetHashCode();
+                    var oldPidList = this.comboBoxFFXIV.Items.Cast<Object>().Select(item => item.ToString()).ToArray();
+                    var oldHash = String.Join(", ", oldPidList).GetHashCode();
+                    if (oldHash != newHash)
                     {
-                        this.pidList = newPidList;
+                        this.comboBoxFFXIV.Invoke((MethodInvoker)delegate {
+                            // Running on the UI thread
+                            comboBoxFFXIV.Items.Clear();
+                            comboBoxFFXIV.Items.AddRange(newPidList);
+                            if (newPidList.Length > 0)
+                            {
+                                if (!comboBoxFFXIV.DroppedDown)
+                                    this.comboBoxFFXIV.SelectedIndex = 0;
+                                if (this.checkBoxAutoInject.Checked)
+                                {
+                                    foreach (var pidStr in newPidList)
+                                    {
+                                        var pid = int.Parse(pidStr);
+                                        this.Inject(pid);
+                                    }
+                                }
+                            }
+                        });
                     }
+                    Thread.Sleep(1000);
                 }
             });
             thread.Start();
@@ -272,14 +286,14 @@ namespace Dalamud.Updater
 
         private void ButtonCheckForUpdate_Click(object sender, EventArgs e)
         {
-            if (this.pidList.Count > 0)
+            if (this.comboBoxFFXIV.SelectedItem != null)
             {
                 var choice = MessageBox.Show("经检测存在 ffxiv_dx11.exe 进程，更新卫月需要关闭游戏，需要帮您代劳吗？", "关闭游戏",
                                 MessageBoxButtons.YesNo,
                                 MessageBoxIcon.Information);
                 if (choice == DialogResult.Yes)
                 {
-                    var pid = int.Parse(this.pidList[0]);
+                    var pid = int.Parse((string)this.comboBoxFFXIV.SelectedItem);
                     Process.GetProcessById(pid).Kill();
                 } else
                 {
@@ -298,6 +312,7 @@ namespace Dalamud.Updater
 
         private void comboBoxFFXIV_Clicked(object sender, EventArgs e)
         {
+            /*
             foreach(var pid in this.pidList)
                 if (!this.comboBoxFFXIV.Items.Contains(pid))
                     this.comboBoxFFXIV.Items.Add(pid);
@@ -308,6 +323,7 @@ namespace Dalamud.Updater
             foreach (var pid in toDel)
                 if (!this.pidList.Contains(pid))
                     this.comboBoxFFXIV.Items.Remove(pid);
+            */
 
         }
 
@@ -343,19 +359,38 @@ namespace Dalamud.Updater
             return startInfo.ToString();
         }
 
-        private void ButtonInject_Click(object sender, EventArgs e)
+        private bool Inject(int pid)
         {
+            var process = Process.GetProcessById(pid);
+            bool injected = false;
+            for (var j = 0; j < process.Modules.Count; j++)
+            {
+                if (process.Modules[j].ModuleName == "Dalamud.dll")
+                {
+                    injected = true;
+                    break;
+                }
+            }
+            if (injected)
+            {
+                return false;
+            }
             var version = getVersion();
             var dalamudPath = new DirectoryInfo(Path.Combine(Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName, $"{version}"));
             var injectorFile = Path.Combine(dalamudPath.FullName, "Dalamud.Injector.exe");
+            var dalamudStartInfo = Convert.ToBase64String(Encoding.UTF8.GetBytes(GeneratingDalamudStartInfo(process)));
+            var startInfo = new ProcessStartInfo(injectorFile, $"{pid} {dalamudStartInfo}");
+            startInfo.WorkingDirectory = dalamudPath.FullName;
+            Process.Start(startInfo);
+            return true;
+        }
+
+        private void ButtonInject_Click(object sender, EventArgs e)
+        {
             if(this.comboBoxFFXIV.SelectedItem != null)
             {
                 var pid = this.comboBoxFFXIV.SelectedItem.ToString();
-                var process = Process.GetProcessById(int.Parse(pid));
-                var dalamudStartInfo = Convert.ToBase64String(Encoding.UTF8.GetBytes(GeneratingDalamudStartInfo(process)));
-                var startInfo = new ProcessStartInfo(injectorFile, $"{pid} {dalamudStartInfo}");
-                startInfo.WorkingDirectory = dalamudPath.FullName;
-                Process.Start(startInfo);
+                Inject(int.Parse(pid));
             }
             else
             {
@@ -363,6 +398,11 @@ namespace Dalamud.Updater
                                 MessageBoxButtons.OK,
                                 MessageBoxIcon.Error);
             }
+        }
+
+        private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        {
+
         }
     }
 }
