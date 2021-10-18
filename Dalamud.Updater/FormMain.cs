@@ -104,8 +104,8 @@ namespace Dalamud.Updater
             string[] strArgs = Environment.GetCommandLineArgs();
             if (strArgs.Length >= 2 && strArgs[1].Equals("-startup"))
             {
-                this.WindowState = FormWindowState.Minimized;
-                this.ShowInTaskbar = false;
+                //this.WindowState = FormWindowState.Minimized;
+                //this.ShowInTaskbar = false;
                 if (firstHideHint)
                 {
                     firstHideHint = false;
@@ -178,6 +178,7 @@ namespace Dalamud.Updater
                     Thread.Sleep(1000);
                 }
             });
+            thread.IsBackground = true;
             thread.Start();
         }
 
@@ -212,9 +213,10 @@ namespace Dalamud.Updater
         private void FormMain_FormClosing(object sender, FormClosingEventArgs e)
         {
             e.Cancel = true;
-            this.WindowState = FormWindowState.Minimized;
-            this.FormBorderStyle = FormBorderStyle.SizableToolWindow;
-            this.ShowInTaskbar = false;
+            //this.WindowState = FormWindowState.Minimized;
+            //this.FormBorderStyle = FormBorderStyle.SizableToolWindow;
+            //this.ShowInTaskbar = false;
+            this.Visible = false;
             if (firstHideHint)
             {
                 firstHideHint = false;
@@ -226,25 +228,29 @@ namespace Dalamud.Updater
         {
             if (e.Button == MouseButtons.Left)
             {
-                if (this.WindowState == FormWindowState.Minimized)
-                {
-                    this.WindowState = FormWindowState.Normal;
-                    this.FormBorderStyle = FormBorderStyle.FixedDialog;
-                    this.ShowInTaskbar = true;
-                }
+                //if (this.WindowState == FormWindowState.Minimized)
+                //{
+                //    this.WindowState = FormWindowState.Normal;
+                //    this.FormBorderStyle = FormBorderStyle.FixedDialog;
+                //    this.ShowInTaskbar = true;
+                //}
+                if (!this.Visible) this.Visible = true;
                 this.Activate();
             }
         }
 
         private void 显示ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            WindowState = FormWindowState.Normal;
+            //WindowState = FormWindowState.Normal;
+            if (!this.Visible) this.Visible = true;
+            this.Activate();
         }
         private void 退出ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.Dispose();
-            this.Close();
+            //this.Close();
             this.DalamudUpdaterIcon.Dispose();
+            Application.Exit();
         }
 
         private void AutoUpdater_ApplicationExitEvent()
