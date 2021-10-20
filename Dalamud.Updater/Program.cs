@@ -18,13 +18,13 @@ namespace Dalamud.Updater
         [STAThread]
         static void Main()
         {
+            string[] strArgs = Environment.GetCommandLineArgs();
             if (!IsAdministrator())
             {
                 // Restart and run as admin
                 var exeName = Process.GetCurrentProcess().MainModule.FileName;
                 ProcessStartInfo startInfo = new ProcessStartInfo(exeName);
                 startInfo.Verb = "runas";
-                string[] strArgs = Environment.GetCommandLineArgs();
                 if (strArgs.Length >= 2 && strArgs[1].Equals("-startup"))
                 {
                     startInfo.Arguments = "-startup";
@@ -36,7 +36,20 @@ namespace Dalamud.Updater
             }
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new FormMain());
+            Form form = new FormMain();
+            if (strArgs.Length >= 2 && strArgs[1].Equals("-startup"))
+            {
+                form.Opacity = 0;
+                form.ShowInTaskbar = false;
+                form.Show();
+                form.Visible = false;
+                form.Opacity = 1;
+                form.ShowInTaskbar = true;
+            } else
+            {
+                form.Show();
+            }
+            Application.Run();
         }
 
         static bool IsAdministrator()
