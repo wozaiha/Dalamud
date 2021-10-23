@@ -56,8 +56,8 @@ namespace Dalamud.Plugin.Internal
             if (!this.devPluginDirectory.Exists)
                 this.devPluginDirectory.Create();
 
-            var noPlugins = bool.Parse(Environment.GetEnvironmentVariable("DALAMUD_NOT_HAVE_PLUGINS") ?? "false");
-            if (this.SafeMode = noPlugins || configuration.PluginSafeMode)
+            this.SafeMode = EnvironmentConfiguration.DalamudNoPlugins || configuration.PluginSafeMode;
+            if (this.SafeMode)
             {
                 configuration.PluginSafeMode = false;
                 configuration.Save();
@@ -952,7 +952,7 @@ namespace Dalamud.Plugin.Internal
         /// <returns>A value indicating whether the plugin/manifest has been banned.</returns>
         public bool IsManifestBanned(PluginManifest manifest)
         {
-            return this.bannedPlugins.Any(ban => ban.Name == manifest.InternalName && ban.AssemblyVersion == manifest.AssemblyVersion);
+            return this.bannedPlugins.Any(ban => ban.Name == manifest.InternalName && ban.AssemblyVersion >= manifest.AssemblyVersion);
         }
 
         /// <summary>
