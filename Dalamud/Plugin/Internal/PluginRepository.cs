@@ -28,7 +28,7 @@ namespace Dalamud.Plugin.Internal
         public PluginRepository(string pluginMasterUrl, bool isEnabled)
         {
             this.PluginMasterUrl = pluginMasterUrl;
-            this.IsThirdParty = pluginMasterUrl != DalamudPluginsMasterUrl;
+            this.IsThirdParty = Utility.Util.FuckGFW(pluginMasterUrl) != Utility.Util.FuckGFW(DalamudPluginsMasterUrl);
             this.IsEnabled = isEnabled;
         }
 

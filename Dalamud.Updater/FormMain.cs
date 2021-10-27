@@ -321,6 +321,8 @@ namespace Dalamud.Updater
 
                             if (AutoUpdater.DownloadUpdate(args))
                             {
+                                this.Dispose();
+                                this.DalamudUpdaterIcon.Dispose();
                                 Application.Exit();
                             }
                         }
