@@ -121,11 +121,6 @@ namespace Dalamud
 
                 Service<ServiceContainer>.Set();
 
-#if DEBUG
-                Service<TaskTracker>.Set();
-                Log.Information("[T1] TaskTracker OK!");
-#endif
-
                 // Initialize the process information.
                 Service<SigScanner>.Set(new SigScanner(true));
                 Service<HookManager>.Set();
@@ -138,12 +133,16 @@ namespace Dalamud
                 var framework = Service<Framework>.Set();
                 Log.Information("[T1] Framework OK!");
 
+#if DEBUG
+                Service<TaskTracker>.Set();
+                Log.Information("[T1] TaskTracker OK!");
+#endif
                 Service<GameNetwork>.Set();
                 Service<GameGui>.Set();
 
                 framework.Enable();
 
-                Log.Information("[T1] Framework ENABLE!");
+                Log.Information("[T1] Load complete!");
             }
             catch (Exception ex)
             {
@@ -204,7 +203,7 @@ namespace Dalamud
 
                 Log.Information("[T2] LOC OK!");
 
-                if (!bool.Parse(Environment.GetEnvironmentVariable("DALAMUD_NOT_HAVE_INTERFACE") ?? "false"))
+                if (!EnvironmentConfiguration.DalamudNoInterface)
                 {
                     try
                     {
@@ -251,6 +250,7 @@ namespace Dalamud
                 Service<DalamudAtkTweaks>.Set().Enable();
 
                 this.IsReady = true;
+                Log.Information("[T2] Load complete!");
             }
             catch (Exception ex)
             {
@@ -305,7 +305,7 @@ namespace Dalamud
         }
 
         /// <summary>
-        ///     Queue an unload of Dalamud when it gets the chance.
+        /// Queue an unload of Dalamud when it gets the chance.
         /// </summary>
         public void Unload()
         {
@@ -314,7 +314,7 @@ namespace Dalamud
         }
 
         /// <summary>
-        ///     Wait for an unload request to start.
+        /// Wait for an unload request to start.
         /// </summary>
         public void WaitForUnload()
         {

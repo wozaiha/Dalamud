@@ -19,6 +19,7 @@ using System.Text.RegularExpressions;
 using System.IO.Compression;
 using System.Configuration;
 using Newtonsoft.Json.Linq;
+using System.Security.Principal;
 
 namespace Dalamud.Updater
 {
@@ -27,11 +28,58 @@ namespace Dalamud.Updater
         private string updateUrl = "https://dalamud-1253720819.cos.ap-nanjing.myqcloud.com/update.xml";
 
         // private List<string> pidList = new List<string>();
+        private bool firstHideHint = true;
         private bool isThreadRunning = true;
+        private bool dotnetDownloadFinished = false;
+        private bool desktopDownloadFinished = false;
+        private string dotnetDownloadPath;
+        private string desktopDownloadPath;
+        private DirectoryInfo runtimePath;
+        private DirectoryInfo[] runtimePaths;
+        private string RuntimeVersion = "5.0.6";
+
+        public static string GetAppSettings(string key, string def = null)
+        {
+            try
+            {
+                var configFile = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+                var settings = configFile.AppSettings.Settings;
+                var ele = settings[key];
+                if (ele == null) return def;
+                return ele.Value;
+            }
+            catch (ConfigurationErrorsException)
+            {
+                Console.WriteLine("Error reading app settings");
+            }
+            return def;
+        }
+        public static void AddOrUpdateAppSettings(string key, string value)
+        {
+            try
+            {
+                var configFile = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+                var settings = configFile.AppSettings.Settings;
+                if (settings[key] == null)
+                {
+                    settings.Add(key, value);
+                }
+                else
+                {
+                    settings[key].Value = value;
+                }
+                configFile.Save(ConfigurationSaveMode.Modified);
+                ConfigurationManager.RefreshSection(configFile.AppSettings.SectionInformation.Name);
+            }
+            catch (ConfigurationErrorsException)
+            {
+                Console.WriteLine("Error writing app settings");
+            }
+        }
         private Version getVersion()
         {
             var rgx = new Regex(@"\d+\.\d+\.\d+\.\d+");
-            var di = new DirectoryInfo(@".");
+            var di = new DirectoryInfo(Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName);
             var dirs = di.GetDirectories("*", SearchOption.TopDirectoryOnly).Where(dir => rgx.IsMatch(dir.Name)).ToArray();
 
             var version = new Version("0.0.0.0");
@@ -46,11 +94,51 @@ namespace Dalamud.Updater
             return version;
         }
 
+
         public FormMain()
         {
             InitializeComponent();
             InitializePIDCheck();
-            labelVersion.Text = string.Format("当前版本 : {0}", getVersion());
+            InitializeDeleteShit();
+            InitializeConfig();
+            string[] strArgs = Environment.GetCommandLineArgs();
+            if (strArgs.Length >= 2 && strArgs[1].Equals("-startup"))
+            {
+                //this.WindowState = FormWindowState.Minimized;
+                //this.ShowInTaskbar = false;
+                if (firstHideHint)
+                {
+                    firstHideHint = false;
+                    this.DalamudUpdaterIcon.ShowBalloonTip(2000, "自启动成功", "放心，我会在后台偷偷干活的。", ToolTipIcon.Info);
+                }
+            }
+            labelVersion.Text = string.Format("卫月版本 : {0}", getVersion());
+        }
+
+        #region Initialize
+        private void InitializeConfig()
+        {
+            if (GetAppSettings("AutoInject", "false") == "true")
+            {
+                this.checkBoxAutoInject.Checked = true;
+            }
+            if (GetAppSettings("AutoStart", "false") == "true")
+            {
+                this.checkBoxAutoStart.Checked = true;
+            }
+            if (GetAppSettings("Accelerate", "false") == "true")
+            {
+                this.checkBoxAcce.Checked = true;
+            }
+        }
+
+        private void InitializeDeleteShit()
+        {
+            var shitInjector = Path.Combine(Directory.GetCurrentDirectory(), "Dalamud.Injector.exe");
+            if (File.Exists(shitInjector))
+            {
+                File.Delete(shitInjector);
+            }
         }
 
         private void InitializePIDCheck()
@@ -63,7 +151,7 @@ namespace Dalamud.Updater
                     var newHash = String.Join(", ", newPidList).GetHashCode();
                     var oldPidList = this.comboBoxFFXIV.Items.Cast<Object>().Select(item => item.ToString()).ToArray();
                     var oldHash = String.Join(", ", oldPidList).GetHashCode();
-                    if (oldHash != newHash)
+                    if (oldHash != newHash && this.comboBoxFFXIV.IsHandleCreated)
                     {
                         this.comboBoxFFXIV.Invoke((MethodInvoker)delegate {
                             // Running on the UI thread
@@ -78,7 +166,10 @@ namespace Dalamud.Updater
                                     foreach (var pidStr in newPidList)
                                     {
                                         var pid = int.Parse(pidStr);
-                                        this.Inject(pid);
+                                        if (this.Inject(pid))
+                                        {
+                                            this.DalamudUpdaterIcon.ShowBalloonTip(2000, "帮你注入了", $"帮你注入了进程{pid}，不用谢。", ToolTipIcon.Info);
+                                        }
                                     }
                                 }
                             }
@@ -87,18 +178,79 @@ namespace Dalamud.Updater
                     Thread.Sleep(1000);
                 }
             });
+            thread.IsBackground = true;
             thread.Start();
         }
 
+        #endregion
         private void FormMain_Load(object sender, EventArgs e)
         {
             AutoUpdater.ApplicationExitEvent += AutoUpdater_ApplicationExitEvent;
             AutoUpdater.CheckForUpdateEvent += AutoUpdaterOnCheckForUpdateEvent;
             AutoUpdater.InstalledVersion = getVersion();
+            labelVer.Text = $"v{Assembly.GetExecutingAssembly().GetName().Version}";
+            UpdateRuntimePaths();
+            new Thread(() => {
+                Thread.Sleep(5000);
+                if (runtimePaths.Any(p => !p.Exists))
+                {
+                    var choice = MessageBox.Show("运行卫月需要下载所需运行库，是否下载？", "下载运行库",
+                                    MessageBoxButtons.YesNo,
+                                    MessageBoxIcon.Information);
+                    if (choice == DialogResult.Yes)
+                        TryDownloadRuntime(runtimePath, RuntimeVersion);
+                    else
+                        return;
+                }
+            }).Start();
+            
         }
         private void FormMain_Disposed(object sender, EventArgs e)
         {
             this.isThreadRunning = false;
+        }
+
+        private void FormMain_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            e.Cancel = true;
+            //this.WindowState = FormWindowState.Minimized;
+            //this.FormBorderStyle = FormBorderStyle.SizableToolWindow;
+            //this.ShowInTaskbar = false;
+            this.Visible = false;
+            if (firstHideHint)
+            {
+                firstHideHint = false;
+                this.DalamudUpdaterIcon.ShowBalloonTip(2000, "小玩意挺会藏", "哎我藏起来了，单击托盘图标呼出程序界面。", ToolTipIcon.Info);
+            }
+        }
+
+        private void DalamudUpdaterIcon_MouseClick(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                //if (this.WindowState == FormWindowState.Minimized)
+                //{
+                //    this.WindowState = FormWindowState.Normal;
+                //    this.FormBorderStyle = FormBorderStyle.FixedDialog;
+                //    this.ShowInTaskbar = true;
+                //}
+                if (!this.Visible) this.Visible = true;
+                this.Activate();
+            }
+        }
+
+        private void 显示ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            //WindowState = FormWindowState.Normal;
+            if (!this.Visible) this.Visible = true;
+            this.Activate();
+        }
+        private void 退出ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.Dispose();
+            //this.Close();
+            this.DalamudUpdaterIcon.Dispose();
+            Application.Exit();
         }
 
         private void AutoUpdater_ApplicationExitEvent()
@@ -169,6 +321,8 @@ namespace Dalamud.Updater
 
                             if (AutoUpdater.DownloadUpdate(args))
                             {
+                                this.Dispose();
+                                this.DalamudUpdaterIcon.Dispose();
                                 Application.Exit();
                             }
                         }
@@ -201,8 +355,12 @@ namespace Dalamud.Updater
                 }
             }
         }
-
-        private void TryDownloadRuntime(DirectoryInfo runtimePath, string RuntimeVersion)
+        public class ProgressEventArgsEx
+        {
+            public int Percentage { get; set; }
+            public string Text { get; set; }
+        }
+        private async void TryDownloadRuntime(DirectoryInfo runtimePath, string RuntimeVersion)
         {
             new Thread(() =>
             {
@@ -217,15 +375,91 @@ namespace Dalamud.Updater
                             MessageBoxIcon.Information);
                     return;
                 }
+            }).Start();
+        }
+        void client1_DownloadProgressChanged(object sender, DownloadProgressChangedEventArgs e)
+        {
+            double bytesIn = double.Parse(e.BytesReceived.ToString());
+            double totalBytes = double.Parse(e.TotalBytesToReceive.ToString());
+            double percentage = bytesIn / totalBytes * 100;
+            progressBar1.Invoke((MethodInvoker)delegate
+            {
+                progressBar1.Value = int.Parse(Math.Truncate(percentage).ToString());
+            });
+        }
+        void client1_DownloadFileCompleted(object sender, AsyncCompletedEventArgs e)
+        {
+            if (e.Error != null)
+            {
+                MessageBox.Show($"dotnet运行库下载失败\n{e.Error}", "下载运行库",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                buttonCheckRuntime.Invoke((MethodInvoker)delegate
+                {
+                    buttonCheckRuntime.Text = "重试下载";
+                    buttonCheckRuntime.Enabled = true;
+                });
+                return;
+            }
+            ZipFile.ExtractToDirectory(dotnetDownloadPath, runtimePath.FullName);
+            File.Delete(dotnetDownloadPath);
+            dotnetDownloadFinished = true;
+            if (dotnetDownloadFinished && desktopDownloadFinished)
+            {
+                buttonCheckRuntime.Invoke((MethodInvoker)delegate
+                {
+                    buttonCheckRuntime.Text = "下载完毕";
+                    buttonCheckRuntime.Enabled = true;
+                });
                 MessageBox.Show("运行库已下载 :)", "下载运行库",
                             MessageBoxButtons.OK,
                             MessageBoxIcon.Information);
-            }).Start();
+            }
         }
+        void client2_DownloadProgressChanged(object sender, DownloadProgressChangedEventArgs e)
+        {
+            double bytesIn = double.Parse(e.BytesReceived.ToString());
+            double totalBytes = double.Parse(e.TotalBytesToReceive.ToString());
+            double percentage = bytesIn / totalBytes * 100;
+
+            progressBar2.Invoke((MethodInvoker)delegate
+            {
+                progressBar2.Value = int.Parse(Math.Truncate(percentage).ToString());
+            });
+        }
+        void client2_DownloadFileCompleted(object sender, AsyncCompletedEventArgs e)
+        {
+            if (e.Error != null)
+            {
+                MessageBox.Show($"desktop运行库下载失败\n{e.Error}", "下载运行库",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                buttonCheckRuntime.Invoke((MethodInvoker)delegate
+                {
+                    buttonCheckRuntime.Text = "重试下载";
+                    buttonCheckRuntime.Enabled = true;
+                });
+                return;
+            }
+            ZipFile.ExtractToDirectory(desktopDownloadPath, runtimePath.FullName);
+            File.Delete(desktopDownloadPath);
+            desktopDownloadFinished = true;
+            if (dotnetDownloadFinished && desktopDownloadFinished)
+            {
+                buttonCheckRuntime.Invoke((MethodInvoker)delegate
+                {
+                    buttonCheckRuntime.Text = "下载完毕";
+                    buttonCheckRuntime.Enabled = true;
+                });
+                MessageBox.Show("运行库已下载 :)", "下载运行库",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Information);
+            }
+        }
+
 
         private void DownloadRuntime(DirectoryInfo runtimePath, string version)
         {
-            // Ensure directory exists
             if (!runtimePath.Exists)
             {
                 runtimePath.Create();
@@ -236,35 +470,65 @@ namespace Dalamud.Updater
                 runtimePath.Create();
             }
 
-            var client = new WebClient();
+
+            WebClient client1 = new WebClient();
+            client1.DownloadProgressChanged += new DownloadProgressChangedEventHandler(client1_DownloadProgressChanged);
+            client1.DownloadFileCompleted += new AsyncCompletedEventHandler(client1_DownloadFileCompleted);
+
+            WebClient client2 = new WebClient();
+            client2.DownloadProgressChanged += new DownloadProgressChangedEventHandler(client2_DownloadProgressChanged);
+            client2.DownloadFileCompleted += new AsyncCompletedEventHandler(client2_DownloadFileCompleted);
+
+
             var baseDotnetRuntimeUrl = this.checkBoxAcce.Checked ? "https://dotnetcli.azureedge.net" : "https://dotnetcli.blob.core.windows.net";
             var dotnetUrl = $"{baseDotnetRuntimeUrl}/dotnet/Runtime/{version}/dotnet-runtime-{version}-win-x64.zip";
             var desktopUrl = $"{baseDotnetRuntimeUrl}/dotnet/WindowsDesktop/{version}/windowsdesktop-runtime-{version}-win-x64.zip";
 
-            var downloadPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            dotnetDownloadPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            desktopDownloadPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
 
-            if (File.Exists(downloadPath))
-                File.Delete(downloadPath);
+            if (File.Exists(dotnetDownloadPath))
+                File.Delete(dotnetDownloadPath);
 
-            client.DownloadFile(dotnetUrl, downloadPath);
-            ZipFile.ExtractToDirectory(downloadPath, runtimePath.FullName);
+            if (File.Exists(desktopDownloadPath))
+                File.Delete(desktopDownloadPath);
 
-            client.DownloadFile(desktopUrl, downloadPath);
-            ZipFile.ExtractToDirectory(downloadPath, runtimePath.FullName);
+            buttonCheckRuntime.Invoke((MethodInvoker)delegate
+            {
+                buttonCheckRuntime.Text = "正在下载";
+                buttonCheckRuntime.Enabled = false;
+            });
 
-            File.Delete(downloadPath);
+            dotnetDownloadFinished = false;
+            new Thread(() =>
+            {
+                client1.DownloadFileAsync(new Uri(dotnetUrl), dotnetDownloadPath);
+            }).Start();
+            //ZipFile.ExtractToDirectory(downloadPath, runtimePath.FullName);
+
+            desktopDownloadFinished = false;
+            new Thread(() =>
+            {
+                client2.DownloadFileAsync(new Uri(desktopUrl), desktopDownloadPath);
+            }).Start();
+            //ZipFile.ExtractToDirectory(downloadPath, runtimePath.FullName);
+
+            //File.Delete(downloadPath);
         }
 
-        private void ButtonCheckRuntime_Click(object sender, EventArgs e)
+        private void UpdateRuntimePaths()
         {
-            var RuntimeVersion = "5.0.6";
-            var runtimePath = new DirectoryInfo(Path.Combine(Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName, "XIVLauncher", "runtime"));
-            var runtimePaths = new DirectoryInfo[]
+            runtimePath = new DirectoryInfo(Path.Combine(Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName, "XIVLauncher", "runtime"));
+            runtimePaths = new DirectoryInfo[]
             {
                 new DirectoryInfo(Path.Combine(runtimePath.FullName, "host", "fxr", RuntimeVersion)),
                 new DirectoryInfo(Path.Combine(runtimePath.FullName, "shared", "Microsoft.NETCore.App", RuntimeVersion)),
                 new DirectoryInfo(Path.Combine(runtimePath.FullName, "shared", "Microsoft.WindowsDesktop.App", RuntimeVersion)),
             };
+        }
+        private async void ButtonCheckRuntime_Click(object sender, EventArgs e)
+        {
+            UpdateRuntimePaths();
             if (runtimePaths.Any(p => !p.Exists))
             {
                 var choice = MessageBox.Show("运行卫月需要下载所需运行库，是否下载？", "下载运行库",
@@ -302,7 +566,7 @@ namespace Dalamud.Updater
             }
             AutoUpdater.Mandatory = true;
             AutoUpdater.InstalledVersion = getVersion();
-            var OverwriteUpdate = ConfigurationManager.AppSettings["OverwriteUpdate"];
+            var OverwriteUpdate = GetAppSettings("OverwriteUpdate");
             if (OverwriteUpdate != null)
                 updateUrl = OverwriteUpdate;
             if (this.checkBoxAcce.Checked)
@@ -312,18 +576,6 @@ namespace Dalamud.Updater
 
         private void comboBoxFFXIV_Clicked(object sender, EventArgs e)
         {
-            /*
-            foreach(var pid in this.pidList)
-                if (!this.comboBoxFFXIV.Items.Contains(pid))
-                    this.comboBoxFFXIV.Items.Add(pid);
-            var toDel = new List<string>();
-            foreach (string pid in this.comboBoxFFXIV.Items)
-                if (!this.pidList.Contains(pid))
-                    toDel.Add(pid);
-            foreach (var pid in toDel)
-                if (!this.pidList.Contains(pid))
-                    this.comboBoxFFXIV.Items.Remove(pid);
-            */
 
         }
 
@@ -399,10 +651,34 @@ namespace Dalamud.Updater
                                 MessageBoxIcon.Error);
             }
         }
-
-        private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        private void SetAutoRun()
         {
-
+            string strFilePath = Application.ExecutablePath;
+            try
+            {
+                SystemHelper.SetAutoRun($"\"{strFilePath}\"" + " -startup", "DalamudAutoInjector", checkBoxAutoStart.Checked);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
+
+        private void checkBoxAutoStart_CheckedChanged(object sender, EventArgs e)
+        {
+            SetAutoRun();
+            AddOrUpdateAppSettings("AutoStart", checkBoxAutoStart.Checked ? "true" : "false");
+        }
+
+        private void checkBoxAutoInject_CheckedChanged(object sender, EventArgs e)
+        {
+            AddOrUpdateAppSettings("AutoInject", checkBoxAutoInject.Checked ? "true" : "false");
+        }
+
+        private void checkBoxAcce_CheckedChanged(object sender, EventArgs e)
+        {
+            AddOrUpdateAppSettings("Accelerate", checkBoxAcce.Checked ? "true" : "false");
+        }
+
     }
 }

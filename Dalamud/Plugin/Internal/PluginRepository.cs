@@ -28,7 +28,7 @@ namespace Dalamud.Plugin.Internal
         public PluginRepository(string pluginMasterUrl, bool isEnabled)
         {
             this.PluginMasterUrl = pluginMasterUrl;
-            this.IsThirdParty = pluginMasterUrl != DalamudPluginsMasterUrl;
+            this.IsThirdParty = Utility.Util.FuckGFW(pluginMasterUrl) != Utility.Util.FuckGFW(DalamudPluginsMasterUrl);
             this.IsEnabled = isEnabled;
         }
 
@@ -75,9 +75,12 @@ namespace Dalamud.Plugin.Internal
             {
                 Log.Information($"Fetching repo: {this.PluginMasterUrl}");
                 using var client = new HttpClient();
-                using var response = await client.GetAsync(this.PluginMasterUrl + "?" + DateTime.Now.Ticks);
-                var data = await response.Content.ReadAsStringAsync();
 
+                // ?ticks causes a cache invalidation. Get a fresh repo every time.
+                using var response = await client.GetAsync(this.PluginMasterUrl + "?" + DateTime.Now.Ticks);
+                response.EnsureSuccessStatusCode();
+
+                var data = await response.Content.ReadAsStringAsync();
                 var pluginMaster = JsonConvert.DeserializeObject<List<RemotePluginManifest>>(data);
 
                 if (pluginMaster == null)

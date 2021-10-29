@@ -31,6 +31,7 @@ namespace Dalamud.Updater
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormMain));
             this.buttonCheckForUpdate = new System.Windows.Forms.Button();
             this.labelVersion = new System.Windows.Forms.Label();
@@ -41,6 +42,15 @@ namespace Dalamud.Updater
             this.checkBoxAcce = new System.Windows.Forms.CheckBox();
             this.linkLabel2 = new System.Windows.Forms.LinkLabel();
             this.checkBoxAutoInject = new System.Windows.Forms.CheckBox();
+            this.DalamudUpdaterIcon = new System.Windows.Forms.NotifyIcon(this.components);
+            this.contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.显示ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.退出ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.checkBoxAutoStart = new System.Windows.Forms.CheckBox();
+            this.progressBar1 = new System.Windows.Forms.ProgressBar();
+            this.progressBar2 = new System.Windows.Forms.ProgressBar();
+            this.labelVer = new System.Windows.Forms.Label();
+            this.contextMenuStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
             // buttonCheckForUpdate
@@ -48,7 +58,7 @@ namespace Dalamud.Updater
             this.buttonCheckForUpdate.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.buttonCheckForUpdate.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.buttonCheckForUpdate.Location = new System.Drawing.Point(12, 93);
+            this.buttonCheckForUpdate.Location = new System.Drawing.Point(12, 126);
             this.buttonCheckForUpdate.Name = "buttonCheckForUpdate";
             this.buttonCheckForUpdate.Size = new System.Drawing.Size(196, 40);
             this.buttonCheckForUpdate.TabIndex = 0;
@@ -60,7 +70,7 @@ namespace Dalamud.Updater
             // 
             this.labelVersion.AutoSize = true;
             this.labelVersion.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.labelVersion.Location = new System.Drawing.Point(9, 23);
+            this.labelVersion.Location = new System.Drawing.Point(12, 18);
             this.labelVersion.Name = "labelVersion";
             this.labelVersion.Size = new System.Drawing.Size(119, 15);
             this.labelVersion.TabIndex = 1;
@@ -85,7 +95,7 @@ namespace Dalamud.Updater
             this.comboBoxFFXIV.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.comboBoxFFXIV.FormattingEnabled = true;
             this.comboBoxFFXIV.ImeMode = System.Windows.Forms.ImeMode.On;
-            this.comboBoxFFXIV.Location = new System.Drawing.Point(12, 179);
+            this.comboBoxFFXIV.Location = new System.Drawing.Point(12, 205);
             this.comboBoxFFXIV.Name = "comboBoxFFXIV";
             this.comboBoxFFXIV.Size = new System.Drawing.Size(196, 23);
             this.comboBoxFFXIV.TabIndex = 2;
@@ -96,7 +106,7 @@ namespace Dalamud.Updater
             this.buttonInject.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.buttonInject.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.buttonInject.Location = new System.Drawing.Point(12, 208);
+            this.buttonInject.Location = new System.Drawing.Point(12, 234);
             this.buttonInject.Name = "buttonInject";
             this.buttonInject.Size = new System.Drawing.Size(196, 89);
             this.buttonInject.TabIndex = 0;
@@ -107,7 +117,7 @@ namespace Dalamud.Updater
             // linkLabel1
             // 
             this.linkLabel1.AutoSize = true;
-            this.linkLabel1.Location = new System.Drawing.Point(161, 303);
+            this.linkLabel1.Location = new System.Drawing.Point(159, 326);
             this.linkLabel1.Name = "linkLabel1";
             this.linkLabel1.Size = new System.Drawing.Size(64, 15);
             this.linkLabel1.TabIndex = 3;
@@ -118,17 +128,18 @@ namespace Dalamud.Updater
             // checkBoxAcce
             // 
             this.checkBoxAcce.AutoSize = true;
-            this.checkBoxAcce.Location = new System.Drawing.Point(12, 154);
+            this.checkBoxAcce.Location = new System.Drawing.Point(130, 18);
             this.checkBoxAcce.Name = "checkBoxAcce";
             this.checkBoxAcce.Size = new System.Drawing.Size(78, 19);
             this.checkBoxAcce.TabIndex = 4;
             this.checkBoxAcce.Text = "国际加速";
             this.checkBoxAcce.UseVisualStyleBackColor = true;
+            this.checkBoxAcce.CheckedChanged += new System.EventHandler(this.checkBoxAcce_CheckedChanged);
             // 
             // linkLabel2
             // 
             this.linkLabel2.AutoSize = true;
-            this.linkLabel2.Location = new System.Drawing.Point(-2, 303);
+            this.linkLabel2.Location = new System.Drawing.Point(-1, 326);
             this.linkLabel2.Name = "linkLabel2";
             this.linkLabel2.Size = new System.Drawing.Size(59, 15);
             this.linkLabel2.TabIndex = 3;
@@ -139,19 +150,90 @@ namespace Dalamud.Updater
             // checkBoxAutoInject
             // 
             this.checkBoxAutoInject.AutoSize = true;
-            this.checkBoxAutoInject.Location = new System.Drawing.Point(130, 154);
+            this.checkBoxAutoInject.Location = new System.Drawing.Point(130, 180);
             this.checkBoxAutoInject.Name = "checkBoxAutoInject";
             this.checkBoxAutoInject.Size = new System.Drawing.Size(78, 19);
             this.checkBoxAutoInject.TabIndex = 4;
             this.checkBoxAutoInject.Text = "自动注入";
             this.checkBoxAutoInject.UseVisualStyleBackColor = true;
-            this.checkBoxAutoInject.CheckedChanged += new System.EventHandler(this.checkBox1_CheckedChanged);
+            this.checkBoxAutoInject.CheckedChanged += new System.EventHandler(this.checkBoxAutoInject_CheckedChanged);
+            // 
+            // DalamudUpdaterIcon
+            // 
+            this.DalamudUpdaterIcon.BalloonTipIcon = System.Windows.Forms.ToolTipIcon.Info;
+            this.DalamudUpdaterIcon.BalloonTipText = "123";
+            this.DalamudUpdaterIcon.BalloonTipTitle = "卫月更新器";
+            this.DalamudUpdaterIcon.ContextMenuStrip = this.contextMenuStrip1;
+            this.DalamudUpdaterIcon.Icon = ((System.Drawing.Icon)(resources.GetObject("DalamudUpdaterIcon.Icon")));
+            this.DalamudUpdaterIcon.Text = "DalamudUpdater";
+            this.DalamudUpdaterIcon.Visible = true;
+            this.DalamudUpdaterIcon.MouseClick += new System.Windows.Forms.MouseEventHandler(this.DalamudUpdaterIcon_MouseClick);
+            // 
+            // contextMenuStrip1
+            // 
+            this.contextMenuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.显示ToolStripMenuItem,
+            this.退出ToolStripMenuItem});
+            this.contextMenuStrip1.Name = "contextMenuStrip1";
+            this.contextMenuStrip1.Size = new System.Drawing.Size(101, 48);
+            // 
+            // 显示ToolStripMenuItem
+            // 
+            this.显示ToolStripMenuItem.Name = "显示ToolStripMenuItem";
+            this.显示ToolStripMenuItem.Size = new System.Drawing.Size(100, 22);
+            this.显示ToolStripMenuItem.Text = "显示";
+            this.显示ToolStripMenuItem.Click += new System.EventHandler(this.显示ToolStripMenuItem_Click);
+            // 
+            // 退出ToolStripMenuItem
+            // 
+            this.退出ToolStripMenuItem.Name = "退出ToolStripMenuItem";
+            this.退出ToolStripMenuItem.Size = new System.Drawing.Size(100, 22);
+            this.退出ToolStripMenuItem.Text = "退出";
+            this.退出ToolStripMenuItem.Click += new System.EventHandler(this.退出ToolStripMenuItem_Click);
+            // 
+            // checkBoxAutoStart
+            // 
+            this.checkBoxAutoStart.AutoSize = true;
+            this.checkBoxAutoStart.Location = new System.Drawing.Point(15, 180);
+            this.checkBoxAutoStart.Name = "checkBoxAutoStart";
+            this.checkBoxAutoStart.Size = new System.Drawing.Size(78, 19);
+            this.checkBoxAutoStart.TabIndex = 5;
+            this.checkBoxAutoStart.Text = "开机启动";
+            this.checkBoxAutoStart.UseVisualStyleBackColor = true;
+            this.checkBoxAutoStart.CheckedChanged += new System.EventHandler(this.checkBoxAutoStart_CheckedChanged);
+            // 
+            // progressBar1
+            // 
+            this.progressBar1.Location = new System.Drawing.Point(12, 93);
+            this.progressBar1.Name = "progressBar1";
+            this.progressBar1.Size = new System.Drawing.Size(195, 10);
+            this.progressBar1.TabIndex = 6;
+            // 
+            // progressBar2
+            // 
+            this.progressBar2.Location = new System.Drawing.Point(12, 109);
+            this.progressBar2.Name = "progressBar2";
+            this.progressBar2.Size = new System.Drawing.Size(195, 10);
+            this.progressBar2.TabIndex = 7;
+            // 
+            // labelVer
+            // 
+            this.labelVer.AutoSize = true;
+            this.labelVer.Location = new System.Drawing.Point(87, 326);
+            this.labelVer.Name = "labelVer";
+            this.labelVer.Size = new System.Drawing.Size(44, 15);
+            this.labelVer.TabIndex = 8;
+            this.labelVer.Text = "default";
             // 
             // FormMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(220, 315);
+            this.ClientSize = new System.Drawing.Size(220, 341);
+            this.Controls.Add(this.labelVer);
+            this.Controls.Add(this.progressBar2);
+            this.Controls.Add(this.progressBar1);
+            this.Controls.Add(this.checkBoxAutoStart);
             this.Controls.Add(this.checkBoxAutoInject);
             this.Controls.Add(this.checkBoxAcce);
             this.Controls.Add(this.linkLabel2);
@@ -168,8 +250,10 @@ namespace Dalamud.Updater
             this.MinimizeBox = false;
             this.Name = "FormMain";
             this.Text = "卫月更新器";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormMain_FormClosing);
             this.Load += new System.EventHandler(this.FormMain_Load);
             this.Disposed += new System.EventHandler(this.FormMain_Disposed);
+            this.contextMenuStrip1.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -186,6 +270,14 @@ namespace Dalamud.Updater
         private System.Windows.Forms.CheckBox checkBoxAcce;
         private System.Windows.Forms.LinkLabel linkLabel2;
         private System.Windows.Forms.CheckBox checkBoxAutoInject;
+        private System.Windows.Forms.NotifyIcon DalamudUpdaterIcon;
+        private System.Windows.Forms.ContextMenuStrip contextMenuStrip1;
+        private System.Windows.Forms.ToolStripMenuItem 显示ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 退出ToolStripMenuItem;
+        private System.Windows.Forms.CheckBox checkBoxAutoStart;
+        private System.Windows.Forms.ProgressBar progressBar1;
+        private System.Windows.Forms.ProgressBar progressBar2;
+        private System.Windows.Forms.Label labelVer;
     }
 }
 
