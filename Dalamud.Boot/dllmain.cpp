@@ -5,8 +5,35 @@
 #include <Windows.h>
 #include "..\lib\CoreCLR\CoreCLR.h"
 #include "..\lib\CoreCLR\boot.h"
+#include "veh.h"
 
 HMODULE g_hModule;
+
+bool is_running_on_linux()
+{
+    size_t required_size;
+    getenv_s(&required_size, nullptr, 0, "XL_WINEONLINUX");
+    if (required_size > 0)
+    {
+        if (char* is_wine_on_linux = static_cast<char*>(malloc(required_size * sizeof(char))))
+        {
+            getenv_s(&required_size, is_wine_on_linux, required_size, "XL_WINEONLINUX");
+            auto result = _stricmp(is_wine_on_linux, "true");
+            free(is_wine_on_linux);
+            if (result == 0)
+                return true;
+        }
+    }
+
+    HMODULE hntdll = GetModuleHandleW(L"ntdll.dll");
+    if (!hntdll) // not running on NT
+        return true;
+
+    FARPROC pwine_get_version = GetProcAddress(hntdll, "wine_get_version");
+    FARPROC pwine_get_host_version = GetProcAddress(hntdll, "wine_get_host_version");
+
+    return pwine_get_version != nullptr || pwine_get_host_version != nullptr;
+}
 
 DllExport DWORD WINAPI Initialize(LPVOID lpParam)
 {
@@ -44,6 +71,20 @@ DllExport DWORD WINAPI Initialize(LPVOID lpParam)
     entrypoint_fn(lpParam);
     printf("Done!\n");
 
+    // ============================== VEH ======================================== //
+
+    printf("Initializing VEH... ");
+    if(is_running_on_linux())
+    {
+        printf("Failed! [Disabled for Wine]\n");
+    }
+    else
+    {
+        if (veh::add_handler())
+            printf("Done!\n");
+        else printf("Failed!\n");
+    }
+
     // =========================================================================== //
 
     #ifndef NDEBUG
@@ -65,6 +106,7 @@ BOOL APIENTRY DllMain(const HMODULE hModule, const DWORD dwReason, LPVOID lpRese
             g_hModule = hModule;
             break;
         case DLL_PROCESS_DETACH:
+            veh::remove_handler();
             break;
     }
     return TRUE;

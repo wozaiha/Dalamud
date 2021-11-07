@@ -161,6 +161,17 @@ namespace Dalamud.Game.Command
                     var command = cmdMatch.Value;
                     if (this.ProcessCommand(command)) isHandled = true;
                 }
+                else
+                {
+                    // Always match for china, since they patch in language files without changing the ClientLanguage.
+                    cmdMatch = this.commandRegexCn.Match(message.TextValue).Groups["command"];
+                    if (cmdMatch.Success)
+                    {
+                        // Yes, it's a Chinese fallback chat command.
+                        var command = cmdMatch.Value;
+                        if (this.ProcessCommand(command)) isHandled = true;
+                    }
+                }
             }
         }
     }

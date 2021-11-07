@@ -478,8 +478,8 @@ namespace Dalamud
             WM_INPUT_DEVICE_CHANGE = 0x00FE,
             WM_INPUT = 0x00FF,
 
-            WM_KEYFIRST = WM_KEYDOWN,
-            WM_KEYDOWN = 0x0100,
+            WM_KEYFIRST = 0x0100,
+            WM_KEYDOWN = WM_KEYFIRST,
             WM_KEYUP = 0x0101,
             WM_CHAR = 0x0102,
             WM_DEADCHAR = 0x0103,
@@ -525,8 +525,8 @@ namespace Dalamud
             WM_CTLCOLORSTATIC = 0x0138,
             MN_GETHMENU = 0x01E1,
 
-            WM_MOUSEFIRST = WM_MOUSEMOVE,
-            WM_MOUSEMOVE = 0x0200,
+            WM_MOUSEFIRST = 0x0200,
+            WM_MOUSEMOVE = WM_MOUSEFIRST,
             WM_LBUTTONDOWN = 0x0201,
             WM_LBUTTONUP = 0x0202,
             WM_LBUTTONDBLCLK = 0x0203,
@@ -1777,6 +1777,123 @@ namespace Dalamud
             byte[] lpBuffer,
             int dwSize,
             out IntPtr lpNumberOfBytesWritten);
+
+        /// <summary>
+        /// Get a handle to the current process.
+        /// </summary>
+        /// <returns>Handle to the process.</returns>
+        [DllImport("kernel32.dll")]
+        public static extern IntPtr GetCurrentProcess();
+
+        /// <summary>
+        /// Get the current process ID.
+        /// </summary>
+        /// <returns>The process ID.</returns>
+        [DllImport("kernel32.dll")]
+        public static extern uint GetCurrentProcessId();
+
+        /// <summary>
+        /// Get the current thread ID.
+        /// </summary>
+        /// <returns>The thread ID.</returns>
+        [DllImport("kernel32.dll")]
+        public static extern uint GetCurrentThreadId();
+    }
+
+    /// <summary>
+    /// Native dbghelp functions.
+    /// </summary>
+    internal static partial class NativeFunctions
+    {
+        /// <summary>
+        /// Type of minidump to create.
+        /// </summary>
+        public enum MiniDumpType : int
+        {
+            /// <summary>
+            /// Normal minidump.
+            /// </summary>
+            MiniDumpNormal,
+
+            /// <summary>
+            /// Minidump with data segments.
+            /// </summary>
+            MiniDumpWithDataSegs,
+
+            /// <summary>
+            /// Minidump with full memory.
+            /// </summary>
+            MiniDumpWithFullMemory,
+        }
+
+        /// <summary>
+        /// Initializes the symbol handler for a process.
+        /// </summary>
+        /// <param name="hProcess">
+        /// A handle that identifies the caller.
+        /// This value should be unique and nonzero, but need not be a process handle.
+        /// However, if you do use a process handle, be sure to use the correct handle.
+        /// If the application is a debugger, use the process handle for the process being debugged.
+        /// Do not use the handle returned by GetCurrentProcess when debugging another process, because calling functions like SymLoadModuleEx can have unexpected results.
+        /// This parameter cannot be NULL.</param>
+        /// <param name="userSearchPath">
+        /// The path, or series of paths separated by a semicolon (;), that is used to search for symbol files.
+        /// If this parameter is NULL, the library attempts to form a symbol path from the following sources:
+        ///    - The current working directory of the application
+        ///    - The _NT_SYMBOL_PATH environment variable
+        ///    - The _NT_ALTERNATE_SYMBOL_PATH environment variable
+        /// Note that the search path can also be set using the SymSetSearchPath function.
+        /// </param>
+        /// <param name="fInvadeProcess">
+        /// If this value is <see langword="true"/>, enumerates the loaded modules for the process and effectively calls the SymLoadModule64 function for each module.
+        /// </param>
+        /// <returns>Whether or not the function succeeded.</returns>
+        [DllImport("dbghelp.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        public static extern bool SymInitialize(IntPtr hProcess, string userSearchPath, bool fInvadeProcess);
+
+        /// <summary>
+        /// Deallocates all resources associated with the process handle.
+        /// </summary>
+        /// <param name="hProcess">A handle to the process that was originally passed to the <seealso cref="SymInitialize"/> function.</param>
+        /// <returns>Whether or not the function succeeded.</returns>
+        [DllImport("dbghelp.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        public static extern bool SymCleanup(IntPtr hProcess);
+
+        /// <summary>
+        /// Creates a minidump.
+        /// </summary>
+        /// <param name="hProcess">Target process handle.</param>
+        /// <param name="processId">Target process ID.</param>
+        /// <param name="hFile">Output file handle.</param>
+        /// <param name="dumpType">Type of dump to take.</param>
+        /// <param name="exceptionInfo">Exception information.</param>
+        /// <param name="userStreamParam">User information.</param>
+        /// <param name="callback">Callback.</param>
+        /// <returns>Whether or not the minidump succeeded.</returns>
+        [DllImport("dbghelp.dll")]
+        public static extern bool MiniDumpWriteDump(IntPtr hProcess, uint processId, IntPtr hFile, int dumpType, ref MinidumpExceptionInformation exceptionInfo, IntPtr userStreamParam, IntPtr callback);
+
+        /// <summary>
+        /// Structure describing minidump exception information.
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential, Pack = 4)]
+        public struct MinidumpExceptionInformation
+        {
+            /// <summary>
+            /// ID of the thread that caused the exception.
+            /// </summary>
+            public uint ThreadId;
+
+            /// <summary>
+            /// Pointer to the exception record.
+            /// </summary>
+            public IntPtr ExceptionPointers;
+
+            /// <summary>
+            /// ClientPointers field.
+            /// </summary>
+            public int ClientPointers;
+        }
     }
 
     /// <summary>

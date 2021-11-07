@@ -94,8 +94,7 @@ namespace Dalamud.Interface.Internal
                 Log.Error(e, "RTSS Free failed");
             }
 
-            this.setCursorHook = HookManager.DirtyLinuxUser ? null
-                : Hook<SetCursorDelegate>.FromSymbol("user32.dll", "SetCursor", this.SetCursorDetour, true);
+            this.setCursorHook = Hook<SetCursorDelegate>.FromSymbol("user32.dll", "SetCursor", this.SetCursorDetour, true);
             this.presentHook = new Hook<PresentDelegate>(this.address.Present, this.PresentDetour);
             this.resizeBuffersHook = new Hook<ResizeBuffersDelegate>(this.address.ResizeBuffers, this.ResizeBuffersDetour);
 
@@ -363,7 +362,23 @@ namespace Dalamud.Interface.Internal
                 var startInfo = Service<DalamudStartInfo>.Get();
                 var configuration = Service<DalamudConfiguration>.Get();
 
-                this.scene.ImGuiIniPath = Path.Combine(Path.GetDirectoryName(startInfo.ConfigurationPath), "dalamudUI.ini");
+                var iniFileInfo = new FileInfo(Path.Combine(Path.GetDirectoryName(startInfo.ConfigurationPath), "dalamudUI.ini"));
+
+                try
+                {
+                    if (iniFileInfo.Length > 1200000)
+                    {
+                        Log.Warning("dalamudUI.ini was over 1mb, deleting");
+                        iniFileInfo.CopyTo(Path.Combine(iniFileInfo.DirectoryName, $"dalamudUI-{DateTimeOffset.Now.ToUnixTimeSeconds()}.ini"));
+                        iniFileInfo.Delete();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Could not delete dalamudUI.ini");
+                }
+
+                this.scene.ImGuiIniPath = iniFileInfo.FullName;
                 this.scene.OnBuildUI += this.Display;
                 this.scene.OnNewInputFrame += this.OnNewInputFrame;
 
