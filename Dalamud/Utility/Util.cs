@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
@@ -6,7 +7,8 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
-
+using System.Threading.Tasks;
+using Dalamud.Configuration;
 using Dalamud.Configuration.Internal;
 using Dalamud.Game;
 using Dalamud.Interface;
@@ -23,6 +25,7 @@ namespace Dalamud.Utility
     public static class Util
     {
         private static string gitHashInternal;
+        private static List<FuckGFWSettings> fuckGFWList;
 
         /// <summary>
         /// Gets the assembly version of Dalamud.
@@ -210,6 +213,16 @@ namespace Dalamud.Utility
         }
 
         /// <summary>
+        /// Set the list of fuck GFWs from configure.
+        /// </summary>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        public static void SetFuckGFWFromConfig()
+        {
+            var configuration = Service<DalamudConfiguration>.Get();
+            fuckGFWList = configuration.FuckGFWList;
+        }
+
+        /// <summary>
         /// This is a FUCK-GFW replacement of urls.
         /// </summary>
         /// <param name="url">A url to be fucked.</param>
@@ -217,7 +230,49 @@ namespace Dalamud.Utility
         public static string FuckGFW(string url)
         {
             if (url == null) return null;
+            if (fuckGFWList == null)
+            {
+                SetFuckGFWFromConfig();
+            }
+
+            var originalUrl = url;
+            if (fuckGFWList != null)
+            {
+                foreach (var fuckGFW in fuckGFWList)
+                {
+                    if (fuckGFW.IsEnabled)
+                    {
+                        var oldUrl = url;
+                        url = Regex.Replace(url, fuckGFW.UrlRegex, fuckGFW.ReplaceTo);
+                        if (url != oldUrl)
+                        {
+                            Log.Debug($"GFW fucked by {fuckGFW.UrlRegex} -> {fuckGFW.ReplaceTo}:");
+                            Log.Debug($"\t{url}");
+                        }
+                    }
+                }
+            }
+
             var startInfo = Service<DalamudStartInfo>.Get();
+            if (startInfo.GlobalAccelerate)
+            {
+                var oldUrl = url;
+                var urlRegex = @"cos\.ap-nanjing\.myqcloud\.com";
+                var replaceTo = "cos.accelerate.myqcloud.com";
+                url = Regex.Replace(url, urlRegex, replaceTo);
+                if (url != oldUrl)
+                {
+                    Log.Debug($"GFW fucked by {urlRegex} -> {replaceTo}:");
+                    Log.Debug($"\t{url}");
+                }
+            }
+
+            if (originalUrl != url)
+            {
+                Log.Information($"Fucked GFW from {originalUrl} \n\tto {url}");
+            }
+
+            /*
             if (!startInfo.GlobalAccelerate)
             {
                 url = Regex.Replace(url, @"^https:\/\/raw\.githubusercontent\.com", "https://raw.fastgit.org");
@@ -228,6 +283,7 @@ namespace Dalamud.Utility
             {
                 url = Regex.Replace(url, @"cos\.ap-nanjing\.myqcloud\.com", "cos.accelerate.myqcloud.com");
             }
+            */
 
             return url;
         }
