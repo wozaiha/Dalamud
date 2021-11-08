@@ -24,7 +24,7 @@ namespace Dalamud.Game.Command
         private readonly Regex commandRegexJp = new(@"^そのコマンドはありません。： (?<command>.+)$", RegexOptions.Compiled);
         private readonly Regex commandRegexDe = new(@"^„(?<command>.+)“ existiert nicht als Textkommando\.$", RegexOptions.Compiled);
         private readonly Regex commandRegexFr = new(@"^La commande texte “(?<command>.+)” n'existe pas\.$", RegexOptions.Compiled);
-        private readonly Regex commandRegexCn = new(@"^“(?<command>.+)”出现问题：该命令不存在。$", RegexOptions.Compiled);
+        private readonly Regex commandRegexCn = new(@"^“(?<command>.+)”(出现问题：该命令不存在|出現問題：該命令不存在)。$", RegexOptions.Compiled);
         private readonly Regex currentLangCommandRegex;
 
         /// <summary>
@@ -160,6 +160,17 @@ namespace Dalamud.Game.Command
                     // Yes, it's a chat command.
                     var command = cmdMatch.Value;
                     if (this.ProcessCommand(command)) isHandled = true;
+                }
+                else
+                {
+                    // Always match for china, since they patch in language files without changing the ClientLanguage.
+                    cmdMatch = this.commandRegexCn.Match(message.TextValue).Groups["command"];
+                    if (cmdMatch.Success)
+                    {
+                        // Yes, it's a Chinese fallback chat command.
+                        var command = cmdMatch.Value;
+                        if (this.ProcessCommand(command)) isHandled = true;
+                    }
                 }
             }
         }

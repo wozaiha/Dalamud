@@ -8,11 +8,6 @@ namespace Dalamud.Configuration.Internal
     internal class EnvironmentConfiguration
     {
         /// <summary>
-        /// Gets a value indicating whether the DALAMUD_NOT_HAVE_INTERFACE setting has been enabled.
-        /// </summary>
-        public static bool DalamudNoInterface { get; } = GetEnvironmentVariable("DALAMUD_NOT_HAVE_INTERFACE");
-
-        /// <summary>
         /// Gets a value indicating whether the XL_WINEONLINUX setting has been enabled.
         /// </summary>
         public static bool XlWineOnLinux { get; } = GetEnvironmentVariable("XL_WINEONLINUX");
@@ -23,9 +18,19 @@ namespace Dalamud.Configuration.Internal
         public static bool DalamudNoPlugins { get; } = GetEnvironmentVariable("DALAMUD_NOT_HAVE_PLUGINS");
 
         /// <summary>
-        /// Gets a value indicating whether the DalamudForceCoreHook setting has been enabled.
+        /// Gets a value indicating whether the DalamudForceReloaded setting has been enabled.
         /// </summary>
-        public static bool DalamudForceCoreHook { get; } = GetEnvironmentVariable("DALAMUD_FORCE_COREHOOK");
+        public static bool DalamudForceReloaded { get; } = GetEnvironmentVariable("DALAMUD_FORCE_RELOADED");
+
+        /// <summary>
+        /// Gets a value indicating whether the DalamudForceMinHook setting has been enabled.
+        /// </summary>
+        public static bool DalamudForceMinHook { get; } = GetEnvironmentVariable("DALAMUD_FORCE_MINHOOK");
+
+        /// <summary>
+        /// Gets a value indicating whether or not Dalamud should wait for a debugger to be attached when initializing.
+        /// </summary>
+        public static bool DalamudWaitForDebugger { get; } = GetEnvironmentVariable("DALAMUD_WAIT_DEBUGGER");
 
         private static bool GetEnvironmentVariable(string name)
             => bool.Parse(Environment.GetEnvironmentVariable(name) ?? "false");
