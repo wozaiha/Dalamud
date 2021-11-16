@@ -367,6 +367,37 @@ namespace Dalamud.Interface.Internal.Windows
             ImGui.TextColored(ImGuiColors.DalamudGrey, "Total memory used by Dalamud & Plugins: " + FormatBytes(GC.GetTotalMemory(false)));
         }
 
+        private void FuckGFWAddDefault()
+        {
+            List<FuckGFWSettings> defaultFuckGFWSettings = new();
+            defaultFuckGFWSettings.Add(new FuckGFWSettings
+                {
+                    UrlRegex = @"https:\/\/raw\.githubusercontent\.com",
+                    ReplaceTo = "https://raw.fastgit.org/",
+                    IsEnabled = true,
+                });
+            defaultFuckGFWSettings.Add(new FuckGFWSettings
+                {
+                    UrlRegex = @"https:\/\/(?:gitee|github)\.com\/(.*)?\/(.*)?\/raw",
+                    ReplaceTo = "https://raw.fastgit.org/$1/$2",
+                    IsEnabled = true,
+                });
+            defaultFuckGFWSettings.Add(new FuckGFWSettings
+                {
+                    UrlRegex = @"https:\/\/github\.com\/(.*)?\/(.*)?\/releases\/download",
+                    ReplaceTo = "https://download.fastgit.org/$1/$2/releases/download",
+                    IsEnabled = true,
+                });
+            defaultFuckGFWSettings.ForEach(settings =>
+            {
+                if (!this.fuckGFWList.Any(fuckGFW => fuckGFW.UrlRegex.Equals(settings.UrlRegex)))
+                {
+                    this.fuckGFWList.Add(settings);
+                    this.fuckGFWListChanged = true;
+                }
+            });
+        }
+
         private void DrawFuckGFWSection()
         {
             ImGui.Text(Loc.Localize("DalamudSettingsFuckGFW", "Fuck GFW Replacements"));
@@ -376,6 +407,11 @@ namespace Dalamud.Interface.Internal.Windows
                 ImGui.SameLine();
                 ImGui.Text(Loc.Localize("DalamudSettingsChanged", "(Changed)"));
                 ImGui.PopStyleColor();
+            }
+
+            if (ImGui.Button(Loc.Localize("DalamudFuckGFWAddDefault", "Add Default")))
+            {
+                this.FuckGFWAddDefault();
             }
 
             ImGui.TextColored(ImGuiColors.DalamudGrey, Loc.Localize("DalamudSettingFuckGFWHint", "Add fuck GFW replacements."));
