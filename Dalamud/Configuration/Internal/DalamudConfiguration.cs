@@ -88,6 +88,11 @@ namespace Dalamud.Configuration.Internal
         public bool DoDalamudRuntime { get; set; } = false;
 
         /// <summary>
+        /// Gets or sets a list of fuck GFW replacements.
+        /// </summary>
+        public List<FuckGFWSettings> FuckGFWList { get; set; } = new();
+
+        /// <summary>
         /// Gets or sets a list of custom repos.
         /// </summary>
         public List<ThirdPartyRepoSettings> ThirdRepoList { get; set; } = new();
