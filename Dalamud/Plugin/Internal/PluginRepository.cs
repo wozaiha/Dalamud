@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Net.Http;
 using System.Threading.Tasks;
 
 using Dalamud.Logging.Internal;
@@ -14,7 +13,7 @@ namespace Dalamud.Plugin.Internal
     /// <summary>
     /// This class represents a single plugin repository.
     /// </summary>
-    internal partial class PluginRepository
+    internal class PluginRepository
     {
         // TODO: Change back to master after api4 release
         private const string DalamudPluginsMasterUrl = "https://dalamudplugins-1253720819.cos.ap-nanjing.myqcloud.com/cn-api4/pluginmaster.json";

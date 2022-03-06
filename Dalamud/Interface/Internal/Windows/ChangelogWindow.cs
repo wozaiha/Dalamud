@@ -1,72 +1,94 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Numerics;
 
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
 using ImGuiNET;
-using Serilog;
+using ImGuiScene;
 
 namespace Dalamud.Interface.Internal.Windows
 {
     /// <summary>
     /// For major updates, an in-game Changelog window.
     /// </summary>
-    internal sealed class ChangelogWindow : Window
+    internal sealed class ChangelogWindow : Window, IDisposable
     {
         /// <summary>
         /// Whether the latest update warrants a changelog window.
         /// </summary>
-        public const string WarrantsChangelogForMajorMinor = "6.0.";
+        public const string WarrantsChangelogForMajorMinor = "6.3.";
 
         private const string ChangeLog =
-            @"这是迄今为止卫月插件框架的最大更新。
-我们重做了大部分底层系统，为您提供更好的插件运行和浏览体验，包括更好的性能，以及更好的API和更舒适的开发环境。
+            @"• Added a new menu to the title screen which allows you to access the plugin installer and various other plugins before logging in.
+    => You can disable this menu in the settings under ""Look & Feel"".
+• Added a way for plugins to add information to the game's server info bar (e.g. current song, ping, etc).
+    => You can disable and reorder this information in the settings, if any plugin provides it.
+• Switched the plugin download server to a self-hosted solution instead of GitHub, to circumvent API limits, country blocks and bad ISP routing.
+    => Please see the ""Are plugins safe to use"" part of the XIVLauncher FAQ(goatcorp.github.io/faq) or reach out on Discord if you have concerns about security or want details on how this is set up and ran.
+    => Changelogs in-game/the plugin installer should now also be more common, as the new service takes changelogs from the developer pull request descriptions.
+• The ""Available Plugins"" list in the plugin installer now also shows installed plugins to make the split less confusing. A new filter mode that filters installed plugins has been added.
+• A ""Changelog"" category has been added in the plugin installer which will list all recent changes to your plugins, and recent changes to Dalamud.
 
-我们还添加了一些新功能：
-• 重新设计的插件安装程序，具有图标、屏幕截图和可过滤的类别
-• 卫月窗口的新外观和样式编辑器，可让您根据自己的喜好调整颜色和其他变量
-• 在游戏中按下 ESC 将关闭激活的卫月窗口并保持游戏窗口打开，直到所有窗口关闭，从而统一游戏窗口的行为（您可以在设置中禁用此功能）
-• 提供了卫月窗口的输入法
-
-如果您发现任何问题或需要帮助，请务必在我们的 Discord 服务器或 QQ 群里询问。";
+If you note any issues or need help, please make sure to ask on our discord server.
+Thanks and have fun!";
 
         private const string UpdatePluginsInfo =
-            @"• 由于此更新，您的所有插件都已自动禁用。 这是正常的。
-• 打开插件安装程序，然后单击“更新插件”。 更新的插件应该更新然后重新启用自己。
-    => 请记住，并非您的所有插件都已针对新版本进行了更新。
-    => 如果某些插件在“已安装插件”选项卡中显示为红色叉号，则它们可能尚不可用。";
+            @"• All of your plugins were disabled automatically, due to this update. This is normal.
+• Open the plugin installer, then click 'update plugins'. Updated plugins should update and then re-enable themselves.
+   => Please keep in mind that not all of your plugins may already be updated for the new version.
+   => If some plugins are displayed with a red cross in the 'Installed Plugins' tab, they may not yet be available.
+
+While we tested the released plugins considerably with a smaller set of people and believe that they are stable, we cannot guarantee to you that you will not run into crashes.
+
+Considering current queue times, this is why we recommend that for now, you only use a set of plugins that are most essential to you, so you can go on playing the game instead of waiting endlessly.";
 
         private readonly string assemblyVersion = Util.AssemblyVersion;
+
+        private readonly TextureWrap logoTexture;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ChangelogWindow"/> class.
         /// </summary>
         public ChangelogWindow()
-            : base("有啥新功能？？")
+            : base("What's new in XIVLauncher?", ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoResize)
         {
             this.Namespace = "DalamudChangelogWindow";
 
             this.Size = new Vector2(885, 463);
             this.SizeCondition = ImGuiCond.Appearing;
+
+            var interfaceManager = Service<InterfaceManager>.Get();
+            var dalamud = Service<Dalamud>.Get();
+
+            this.logoTexture =
+                interfaceManager.LoadImage(Path.Combine(dalamud.AssetDirectory.FullName, "UIRes", "logo.png"))!;
         }
 
         /// <inheritdoc/>
         public override void Draw()
         {
-            ImGui.Text($"卫月框架更新到了版本 D{this.assemblyVersion}。");
+            ImGui.Text($"Dalamud has been updated to version D{this.assemblyVersion}.");
 
             ImGuiHelpers.ScaledDummy(10);
 
-            ImGui.Text("包含了以下更新:");
+            ImGui.Text("The following changes were introduced:");
+
+            ImGui.SameLine();
+            ImGuiHelpers.ScaledDummy(0);
+            var imgCursor = ImGui.GetCursorPos();
+
             ImGui.TextWrapped(ChangeLog);
 
+            /*
             ImGuiHelpers.ScaledDummy(5);
 
             ImGui.TextColored(ImGuiColors.DalamudRed, " !!! 注意 !!!");
 
             ImGui.TextWrapped(UpdatePluginsInfo);
+            */
 
             ImGuiHelpers.ScaledDummy(10);
 
@@ -92,18 +114,7 @@ namespace Dalamud.Interface.Internal.Windows
 
             if (ImGui.Button(FontAwesomeIcon.LaughBeam.ToIconString()))
             {
-                try
-                {
-                    Process.Start(new ProcessStartInfo()
-                    {
-                        FileName = "https://discord.gg/3NMcUV5",
-                        UseShellExecute = true,
-                    });
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Could not open discord url");
-                }
+                Util.OpenLink("https://discord.gg/3NMcUV5");
             }
 
             if (ImGui.IsItemHovered())
@@ -142,24 +153,27 @@ namespace Dalamud.Interface.Internal.Windows
 
             if (ImGui.Button(FontAwesomeIcon.Globe.ToIconString()))
             {
-                try
-                {
-                    Process.Start(new ProcessStartInfo()
-                    {
-                        FileName = "https://github.com/goatcorp/FFXIVQuickLauncher",
-                        UseShellExecute = true,
-                    });
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Could not open github repo url");
-                }
+                Util.OpenLink("https://goatcorp.github.io/faq/");
             }
 
             if (ImGui.IsItemHovered())
             {
                 ImGui.PopFont();
-                ImGui.SetTooltip("See our GitHub repository");
+                ImGui.SetTooltip("See the FAQ");
+                ImGui.PushFont(UiBuilder.IconFont);
+            }
+
+            ImGui.SameLine();
+
+            if (ImGui.Button(FontAwesomeIcon.Heart.ToIconString()))
+            {
+                Util.OpenLink("https://goatcorp.github.io/faq/support");
+            }
+
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.PopFont();
+                ImGui.SetTooltip("Support what we care about");
                 ImGui.PushFont(UiBuilder.IconFont);
             }
 
@@ -173,6 +187,20 @@ namespace Dalamud.Interface.Internal.Windows
             {
                 this.IsOpen = false;
             }
+
+            imgCursor.X += 750;
+            imgCursor.Y -= 30;
+            ImGui.SetCursorPos(imgCursor);
+
+            ImGui.Image(this.logoTexture.ImGuiHandle, new Vector2(100));
+        }
+
+        /// <summary>
+        /// Dispose this window.
+        /// </summary>
+        public void Dispose()
+        {
+            this.logoTexture.Dispose();
         }
     }
 }

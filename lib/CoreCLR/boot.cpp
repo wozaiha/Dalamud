@@ -29,6 +29,7 @@ std::wstring ExePath() {
     std::wstring::size_type pos = std::wstring(buffer).find_last_of(L"\\/");
     return std::wstring(buffer).substr(0, pos);
 }
+std::optional<CoreCLR> g_clr;
 
 int InitializeClrAndGetEntryPoint(
     std::wstring runtimeconfig_path,
@@ -38,11 +39,13 @@ int InitializeClrAndGetEntryPoint(
     std::wstring entrypoint_delegate_type_name,
     void** entrypoint_fn)
 {
+    g_clr = CoreCLR();
+
     int result;
-    CoreCLR clr;
     SetEnvironmentVariable(L"DOTNET_MULTILEVEL_LOOKUP", L"0");
     //SetEnvironmentVariable(L"COMPlus_legacyCorruptedStateExceptionsPolicy", L"1");
     SetEnvironmentVariable(L"DOTNET_legacyCorruptedStateExceptionsPolicy", L"1");
+    SetEnvironmentVariable(L"COMPLUS_ForceENC", L"1");
 
     wchar_t* dotnet_path;
     wchar_t* _appdata;
@@ -93,7 +96,7 @@ int InitializeClrAndGetEntryPoint(
     };
 
     printf("Loading hostfxr... ");
-    if ((result = clr.load_hostfxr(&init_parameters)) != 0)
+    if ((result = g_clr->load_hostfxr(&init_parameters)) != 0)
     {
         printf("\nError: Failed to load the `hostfxr` library (err=%d)\n", result);
         return result;
@@ -110,7 +113,7 @@ int InitializeClrAndGetEntryPoint(
     };
 
     printf("Loading coreclr... ");;
-    if ((result = clr.load_runtime(runtimeconfig_path, &runtime_parameters)) != 0)
+    if ((result = g_clr->load_runtime(runtimeconfig_path, &runtime_parameters)) != 0)
     {
         printf("\nError: Failed to load coreclr (err=%d)\n", result);
         return result;
@@ -120,7 +123,7 @@ int InitializeClrAndGetEntryPoint(
     // =========================================================================== //
 
     printf("Loading module... ");
-    if ((result = clr.load_assembly_and_get_function_pointer(
+    if ((result = g_clr->load_assembly_and_get_function_pointer(
         module_path.c_str(),
         entrypoint_assembly_name.c_str(),
         entrypoint_method_name.c_str(),

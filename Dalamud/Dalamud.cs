@@ -18,6 +18,7 @@ using Dalamud.Game.Network.Internal;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Hooking.Internal;
 using Dalamud.Interface;
+using Dalamud.Interface.GameFonts;
 using Dalamud.Interface.Internal;
 using Dalamud.IoC.Internal;
 using Dalamud.Logging.Internal;
@@ -34,6 +35,7 @@ using Serilog.Events;
 #endif
 
 [assembly: InternalsVisibleTo("Dalamud.Test")]
+[assembly: InternalsVisibleTo("Dalamud.DevHelpers")]
 
 namespace Dalamud
 {
@@ -206,6 +208,9 @@ namespace Dalamud
                 Service<InterfaceManager>.Set().Enable();
                 Log.Information("[T2] IM OK!");
 
+                Service<GameFontManager>.Set();
+                Log.Information("[T2] GFM OK!");
+
 #pragma warning disable CS0618 // Type or member is obsolete
                 Service<SeStringManager>.Set();
 #pragma warning restore CS0618 // Type or member is obsolete
@@ -259,9 +264,15 @@ namespace Dalamud
                 {
                     Log.Error(ex, "Proxy failed.");
                 }
+                Service<TitleScreenMenu>.Set();
 
                 var pluginManager = Service<PluginManager>.Set();
                 Service<CallGate>.Set();
+
+                Log.Information("[T3] PM OK!");
+
+                Service<DalamudInterface>.Set();
+                Log.Information("[T3] DUI OK!");
 
                 try
                 {
@@ -269,7 +280,7 @@ namespace Dalamud
 
                     pluginManager.OnInstalledPluginsChanged += Troubleshooting.LogTroubleshooting;
 
-                    Log.Information("[T3] PM OK!");
+                    Log.Information("[T3] Sync plugins OK!");
 
                     pluginManager.CleanupPlugins();
                     Log.Information("[T3] PMC OK!");
@@ -281,9 +292,6 @@ namespace Dalamud
                 {
                     Log.Error(ex, "Plugin load failed.");
                 }
-
-                Service<DalamudInterface>.Set();
-                Log.Information("[T3] DUI OK!");
 
                 Troubleshooting.LogTroubleshooting();
 
@@ -361,13 +369,13 @@ namespace Dalamud
                     Thread.Sleep(100);
                 }
 
-                Service<Framework>.GetNullable()?.Dispose();
-                Service<ClientState>.GetNullable()?.Dispose();
+                Service<Framework>.GetNullable()?.ExplicitDispose();
+                Service<ClientState>.GetNullable()?.ExplicitDispose();
 
                 this.unloadSignal?.Dispose();
 
                 Service<WinSockHandlers>.GetNullable()?.Dispose();
-                Service<DataManager>.GetNullable()?.Dispose();
+                Service<DataManager>.GetNullable()?.ExplicitDispose();
                 Service<AntiDebug>.GetNullable()?.Dispose();
                 Service<DalamudAtkTweaks>.GetNullable()?.Dispose();
                 Service<HookManager>.GetNullable()?.Dispose();

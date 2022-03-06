@@ -16,6 +16,7 @@ using Dalamud.Game.Gui.Internal;
 using Dalamud.Game.Internal.DXGI;
 using Dalamud.Hooking;
 using Dalamud.Hooking.Internal;
+using Dalamud.Interface.GameFonts;
 using Dalamud.Interface.Internal.ManagedAsserts;
 using Dalamud.Interface.Internal.Notifications;
 using Dalamud.Interface.Internal.Windows.StyleEditor;
@@ -55,6 +56,8 @@ namespace Dalamud.Interface.Internal
         private readonly ManualResetEvent fontBuildSignal;
         private readonly SwapChainVtableResolver address;
         private RawDX11Scene? scene;
+
+        private GameFontHandle? axisFontHandle;
 
         // can't access imgui IO before first present call
         private bool lastWantCapture = false;
@@ -128,9 +131,14 @@ namespace Dalamud.Interface.Internal
         public event Action ResizeBuffers;
 
         /// <summary>
-        /// Gets or sets an action that is executed when fonts are rebuilt.
+        /// Gets or sets an action that is executed right before fonts are rebuilt.
         /// </summary>
         public event Action BuildFonts;
+
+        /// <summary>
+        /// Gets or sets an action that is executed right after fonts are rebuilt.
+        /// </summary>
+        public event Action AfterBuildFonts;
 
         /// <summary>
         /// Gets the default ImGui font.
@@ -182,6 +190,16 @@ namespace Dalamud.Interface.Internal
         public bool IsReady => this.scene != null;
 
         /// <summary>
+        /// Gets or sets the overrided font gamma value, instead of using the value from configuration.
+        /// </summary>
+        public float? FontGammaOverride { get; set; } = null;
+
+        /// <summary>
+        /// Gets the font gamma value to use.
+        /// </summary>
+        public float FontGamma => Math.Max(0.1f, this.FontGammaOverride.GetValueOrDefault(Service<DalamudConfiguration>.Get().FontGamma));
+
+        /// <summary>
         /// Enable this module.
         /// </summary>
         public void Enable()
@@ -198,7 +216,9 @@ namespace Dalamud.Interface.Internal
                     var rtssModule = NativeFunctions.GetModuleHandleW("RTSSHooks64.dll");
                     var installAddr = NativeFunctions.GetProcAddress(rtssModule, "InstallRTSSHook");
 
+                    Log.Debug("Installing RTSS hook");
                     Marshal.GetDelegateForFunctionPointer<InstallRTSSHook>(installAddr).Invoke();
+                    Log.Debug("RTSS hook OK!");
                 }
             }
             catch (Exception ex)
@@ -302,6 +322,7 @@ namespace Dalamud.Interface.Internal
             if (!this.isRebuildingFonts)
             {
                 Log.Verbose("[FONT] RebuildFonts() trigger");
+                this.SetAxisFonts();
 
                 this.isRebuildingFonts = true;
                 this.scene.OnNewRenderFrame += this.RebuildFontsInternal;
@@ -319,6 +340,26 @@ namespace Dalamud.Interface.Internal
         private static void ShowFontError(string path)
         {
             Util.Fatal($"One or more files required by XIVLauncher were not found.\nPlease restart and report this error if it occurs again.\n\n{path}", "Error");
+        }
+
+        private void SetAxisFonts()
+        {
+            var configuration = Service<DalamudConfiguration>.Get();
+            if (configuration.UseAxisFontsFromGame)
+            {
+                var currentFamilyAndSize = GameFontStyle.GetRecommendedFamilyAndSize(GameFontFamily.Axis, this.axisFontHandle?.Style.Size ?? 0f);
+                var expectedFamilyAndSize = GameFontStyle.GetRecommendedFamilyAndSize(GameFontFamily.Axis, 12 * ImGui.GetIO().FontGlobalScale);
+                if (currentFamilyAndSize == expectedFamilyAndSize)
+                    return;
+
+                this.axisFontHandle?.Dispose();
+                this.axisFontHandle = Service<GameFontManager>.Get().NewFontRef(new(expectedFamilyAndSize));
+            }
+            else
+            {
+                this.axisFontHandle?.Dispose();
+                this.axisFontHandle = null;
+            }
         }
 
         /*
@@ -381,6 +422,8 @@ namespace Dalamud.Interface.Internal
                 this.scene.ImGuiIniPath = iniFileInfo.FullName;
                 this.scene.OnBuildUI += this.Display;
                 this.scene.OnNewInputFrame += this.OnNewInputFrame;
+
+                this.SetAxisFonts();
 
                 this.SetupFonts();
 
@@ -488,13 +531,14 @@ namespace Dalamud.Interface.Internal
         private unsafe void SetupFonts()
         {
             var dalamud = Service<Dalamud>.Get();
+            var ioFonts = ImGui.GetIO().Fonts;
+            var fontGamma = this.FontGamma;
 
             this.fontBuildSignal.Reset();
 
-            ImGui.GetIO().Fonts.Clear();
+            ioFonts.Clear();
 
             ImFontConfigPtr fontConfig = ImGuiNative.ImFontConfig_ImFontConfig();
-            fontConfig.MergeMode = true;
             fontConfig.PixelSnapH = true;
 
             var fontPathSc = Path.Combine(dalamud.AssetDirectory.FullName, "UIRes", "NotoSansCJKsc-Medium.otf");
@@ -520,7 +564,9 @@ namespace Dalamud.Interface.Internal
                 },
                 GCHandleType.Pinned);
 
-            ImGui.GetIO().Fonts.AddFontFromFileTTF(fontPathGame, 17.0f, fontConfig, gameRangeHandle.AddrOfPinnedObject());
+            fontConfig.MergeMode = false;
+            ioFonts.AddFontFromFileTTF(fontPathGame, 17.0f, fontConfig, gameRangeHandle.AddrOfPinnedObject());
+            fontConfig.MergeMode = true;
 
             var fontPathIcon = Path.Combine(dalamud.AssetDirectory.FullName, "UIRes", "FontAwesome5FreeSolid.otf");
 
@@ -535,7 +581,7 @@ namespace Dalamud.Interface.Internal
                     0,
                 },
                 GCHandleType.Pinned);
-            IconFont = ImGui.GetIO().Fonts.AddFontFromFileTTF(fontPathIcon, 17.0f, null, iconRangeHandle.AddrOfPinnedObject());
+            IconFont = ioFonts.AddFontFromFileTTF(fontPathIcon, 17.0f, null, iconRangeHandle.AddrOfPinnedObject());
 
             var fontPathMono = Path.Combine(dalamud.AssetDirectory.FullName, "UIRes", "sarasa-mono-sc-nerd-regular.ttf");
 
@@ -543,6 +589,9 @@ namespace Dalamud.Interface.Internal
                 ShowFontError(fontPathMono);
 
             MonoFont = ImGui.GetIO().Fonts.AddFontFromFileTTF(fontPathMono, 17.0f, null, ImGui.GetIO().Fonts.GetGlyphRangesChineseFull());
+            
+            var gameFontManager = Service<GameFontManager>.Get();
+            gameFontManager.BuildFonts();
 
             Log.Verbose("[FONT] Invoke OnBuildFonts");
             this.BuildFonts?.Invoke();
@@ -553,7 +602,22 @@ namespace Dalamud.Interface.Internal
                 Log.Verbose("{0} - {1}", i, ImGui.GetIO().Fonts.Fonts[i].GetDebugName());
             }
 
-            ImGui.GetIO().Fonts.Build();
+            ioFonts.Build();
+
+            if (Math.Abs(fontGamma - 1.0f) >= 0.001)
+            {
+                // Gamma correction (stbtt/FreeType would output in linear space whereas most real world usages will apply 1.4 or 1.8 gamma; Windows/XIV prebaked uses 1.4)
+                ioFonts.GetTexDataAsRGBA32(out byte* texPixels, out var texWidth, out var texHeight);
+                for (int i = 3, i_ = texWidth * texHeight * 4; i < i_; i += 4)
+                    texPixels[i] = (byte)(Math.Pow(texPixels[i] / 255.0f, 1.0f / fontGamma) * 255.0f);
+            }
+
+            gameFontManager.AfterBuildFonts();
+            GameFontManager.CopyGlyphsAcrossFonts(this.axisFontHandle?.ImFont, DefaultFont, false, true);
+
+            Log.Verbose("[FONT] Invoke OnAfterBuildFonts");
+            this.AfterBuildFonts?.Invoke();
+            Log.Verbose("[FONT] OnAfterBuildFonts OK!");
 
             Log.Verbose("[FONT] Fonts built!");
 

@@ -1,13 +1,18 @@
 using System;
 using System.Runtime.InteropServices;
-using System.Text;
 
 using CheapLoc;
 using Dalamud.Configuration.Internal;
+using Dalamud.Data;
+using Dalamud.Game.Gui.ContextMenus;
+using Dalamud.Game.Text;
+using Dalamud.Game.Text.SeStringHandling;
+using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Hooking;
 using Dalamud.Interface.Internal;
 using Dalamud.Interface.Windowing;
 using FFXIVClientStructs.FFXIV.Component.GUI;
+using Lumina.Excel.GeneratedSheets;
 using Serilog;
 
 using ValueType = FFXIVClientStructs.FFXIV.Component.GUI.ValueType;
@@ -27,6 +32,9 @@ namespace Dalamud.Game.Internal
         private readonly Hook<UiModuleRequestMainCommand> hookUiModuleRequestMainCommand;
 
         private readonly Hook<AtkUnitBaseReceiveGlobalEvent> hookAtkUnitBaseReceiveGlobalEvent;
+
+        private readonly string locDalamudPlugins;
+        private readonly string locDalamudSettings;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DalamudAtkTweaks"/> class.
@@ -50,6 +58,12 @@ namespace Dalamud.Game.Internal
 
             var atkUnitBaseReceiveGlobalEventAddress = sigScanner.ScanText("48 89 5C 24 ?? 48 89 7C 24 ?? 55 41 56 41 57 48 8B EC 48 83 EC 50 44 0F B7 F2 ");
             this.hookAtkUnitBaseReceiveGlobalEvent = new Hook<AtkUnitBaseReceiveGlobalEvent>(atkUnitBaseReceiveGlobalEventAddress, this.AtkUnitBaseReceiveGlobalEventDetour);
+
+            this.locDalamudPlugins = Loc.Localize("SystemMenuPlugins", "Dalamud Plugins");
+            this.locDalamudSettings = Loc.Localize("SystemMenuSettings", "Dalamud Settings");
+
+            var contextMenu = Service<ContextMenu>.Get();
+            contextMenu.ContextMenuOpened += this.ContextMenuOnContextMenuOpened;
         }
 
         private delegate void AgentHudOpenSystemMenuPrototype(void* thisPtr, AtkValue* atkValueArgs, uint menuSize);
@@ -70,6 +84,27 @@ namespace Dalamud.Game.Internal
             this.hookAgentHudOpenSystemMenu.Enable();
             this.hookUiModuleRequestMainCommand.Enable();
             this.hookAtkUnitBaseReceiveGlobalEvent.Enable();
+        }
+
+        private void ContextMenuOnContextMenuOpened(ContextMenuOpenedArgs args)
+        {
+            var systemText = Service<DataManager>.Get().GetExcelSheet<Addon>()!.GetRow(1059)!.Text.RawString; // "System"
+            var configuration = Service<DalamudConfiguration>.Get();
+
+            if (args.Title == systemText && configuration.DoButtonsSystemMenu)
+            {
+                var dalamudInterface = Service<DalamudInterface>.Get();
+
+                args.Items.Insert(0, new CustomContextMenuItem(this.locDalamudSettings, selectedArgs =>
+                {
+                    dalamudInterface.ToggleSettingsWindow();
+                }));
+
+                args.Items.Insert(0, new CustomContextMenuItem(this.locDalamudPlugins, selectedArgs =>
+                {
+                    dalamudInterface.TogglePluginInstallerWindow();
+                }));
+            }
         }
 
         private IntPtr AtkUnitBaseReceiveGlobalEventDetour(AtkUnitBase* thisPtr, ushort cmd, uint a3, IntPtr a4, uint* arg)
@@ -143,8 +178,15 @@ namespace Dalamud.Game.Internal
             var secondStringEntry = &atkValueArgs[6 + 15];
             this.atkValueChangeType(secondStringEntry, ValueType.String);
 
-            var strPlugins = Encoding.UTF8.GetBytes(Loc.Localize("SystemMenuPlugins", "Dalamud Plugins"));
-            var strSettings = Encoding.UTF8.GetBytes(Loc.Localize("SystemMenuSettings", "Dalamud Settings"));
+            const int color = 539;
+            var strPlugins = new SeString().Append(new UIForegroundPayload(color))
+                                           .Append($"{SeIconChar.BoxedLetterD.ToIconString()} ")
+                                           .Append(new UIForegroundPayload(0))
+                                           .Append(this.locDalamudPlugins).Encode();
+            var strSettings = new SeString().Append(new UIForegroundPayload(color))
+                                            .Append($"{SeIconChar.BoxedLetterD.ToIconString()} ")
+                                            .Append(new UIForegroundPayload(0))
+                                            .Append(this.locDalamudSettings).Encode();
 
             // do this the most terrible way possible since im lazy
             var bytes = stackalloc byte[strPlugins.Length + 1];
@@ -219,6 +261,8 @@ namespace Dalamud.Game.Internal
                 this.hookAgentHudOpenSystemMenu.Dispose();
                 this.hookUiModuleRequestMainCommand.Dispose();
                 this.hookAtkUnitBaseReceiveGlobalEvent.Dispose();
+
+                Service<ContextMenu>.Get().ContextMenuOpened -= this.ContextMenuOnContextMenuOpened;
             }
 
             this.disposed = true;
