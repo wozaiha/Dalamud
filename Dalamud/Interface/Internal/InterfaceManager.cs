@@ -49,6 +49,8 @@ namespace Dalamud.Interface.Internal
     {
         private const float DefaultFontSizePt = 12.0f;
         private const float DefaultFontSizePx = DefaultFontSizePt * 4.0f / 3.0f;
+        private const ushort Fallback1Codepoint = 0x3013; // Geta mark; FFXIV uses this to indicate that a glyph is missing.
+        private const ushort Fallback2Codepoint = '-'; // FFXIV uses dash if Geta mark is unavailable.
 
         private readonly string rtssPath;
 
@@ -603,6 +605,10 @@ namespace Dalamud.Interface.Internal
             this.fontBuildSignal.Reset();
             ioFonts.Clear();
 
+            ImFontConfigPtr fontConfig = ImGuiNative.ImFontConfig_ImFontConfig();
+            fontConfig.OversampleH = 1;
+            fontConfig.OversampleV = 1;
+            fontConfig.PixelSnapH = true;
 
             {
             var fontPathSc = Path.Combine(dalamud.AssetDirectory.FullName, "UIRes", "NotoSansCJKsc-Medium.otf");
@@ -614,6 +620,7 @@ namespace Dalamud.Interface.Internal
             chineseRangeHandle.Free();
             fontsToUnscale.Add(DefaultFont);   
             }
+            
 
             // Default font
             {
@@ -633,7 +640,7 @@ namespace Dalamud.Interface.Internal
                     ShowFontError(fontPathIcon);
 
                 var iconRangeHandle = GCHandle.Alloc(new ushort[] { 0xE000, 0xF8FF, 0, }, GCHandleType.Pinned);
-                IconFont = ioFonts.AddFontFromFileTTF(fontPathIcon, DefaultFontSizePx * fontScale, null, iconRangeHandle.AddrOfPinnedObject());
+                IconFont = ioFonts.AddFontFromFileTTF(fontPathIcon, DefaultFontSizePx * fontScale, fontConfig, iconRangeHandle.AddrOfPinnedObject());
                 iconRangeHandle.Free();
                 fontsToUnscale.Add(IconFont);
             }
@@ -643,7 +650,7 @@ namespace Dalamud.Interface.Internal
                 var fontPathMono = Path.Combine(dalamud.AssetDirectory.FullName, "UIRes", "Inconsolata-Regular.ttf");
                 if (!File.Exists(fontPathMono))
                     ShowFontError(fontPathMono);
-                MonoFont = ioFonts.AddFontFromFileTTF(fontPathMono, DefaultFontSizePx * fontScale);
+                MonoFont = ioFonts.AddFontFromFileTTF(fontPathMono, DefaultFontSizePx * fontScale, fontConfig);
                 fontsToUnscale.Add(MonoFont);
             }
 
@@ -660,6 +667,9 @@ namespace Dalamud.Interface.Internal
                 foreach (var (fontSize, requests) in extraFontRequests)
                 {
                     List<Tuple<ushort, ushort>> codepointRanges = new();
+                    codepointRanges.Add(Tuple.Create(Fallback1Codepoint, Fallback1Codepoint));
+                    codepointRanges.Add(Tuple.Create(Fallback2Codepoint, Fallback2Codepoint));
+
                     foreach (var request in requests)
                     {
                         foreach (var range in request.CodepointRanges)
@@ -685,7 +695,7 @@ namespace Dalamud.Interface.Internal
                     flattenedRanges.Add(0);
 
                     var rangeHandle = GCHandle.Alloc(flattenedRanges.ToArray(), GCHandleType.Pinned);
-                    var sizedFont = ioFonts.AddFontFromFileTTF(fontPathJp, fontSize * fontScale, null, rangeHandle.AddrOfPinnedObject());
+                    var sizedFont = ioFonts.AddFontFromFileTTF(fontPathJp, fontSize * fontScale, fontConfig, rangeHandle.AddrOfPinnedObject());
                     rangeHandle.Free();
 
                     fontsToUnscale.Add(sizedFont);
@@ -743,7 +753,12 @@ namespace Dalamud.Interface.Internal
 
             foreach (var font in fontsToUnscale)
             {
-                if (font.NativePtr == MonoFont.NativePtr || font.NativePtr == IconFont.NativePtr)
+                // Leave IconFont alone.
+                if (font.NativePtr == IconFont.NativePtr)
+                    continue;
+
+                // MonoFont will be filled later from DefaultFont.
+                if (font.NativePtr == MonoFont.NativePtr)
                     continue;
 
                 if (this.overwriteAllNotoGlyphsWithAxis)
@@ -752,11 +767,17 @@ namespace Dalamud.Interface.Internal
                     GameFontManager.CopyGlyphsAcrossFonts(this.axisFontHandle?.ImFont, font, false, false, 0xE020, 0xE0DB);
             }
 
+            // Fill missing glyphs in DefaultFont from Axis
+            GameFontManager.CopyGlyphsAcrossFonts(this.axisFontHandle?.ImFont, DefaultFont, true, false);
+
             // Fill missing glyphs in MonoFont from DefaultFont
             GameFontManager.CopyGlyphsAcrossFonts(DefaultFont, MonoFont, true, false);
 
             foreach (var font in fontsToUnscale)
+            {
+                font.FallbackChar = Fallback1Codepoint;
                 font.BuildLookupTable();
+            }
 
             Log.Verbose("[FONT] Invoke OnAfterBuildFonts");
             this.AfterBuildFonts?.Invoke();
@@ -764,6 +785,7 @@ namespace Dalamud.Interface.Internal
 
             Log.Verbose("[FONT] Fonts built!");
 
+            fontConfig.Destroy();
             this.fontBuildSignal.Set();
 
             this.FontsReady = true;
