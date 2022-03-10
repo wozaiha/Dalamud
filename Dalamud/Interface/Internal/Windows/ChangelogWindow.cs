@@ -138,7 +138,7 @@ Considering current queue times, this is why we recommend that for now, you only
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Could not open QQ url");
+                    //Log.Error(ex, "Could not open QQ url");
                 }
             }
 

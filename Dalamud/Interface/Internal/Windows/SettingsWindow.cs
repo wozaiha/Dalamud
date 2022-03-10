@@ -529,7 +529,7 @@ namespace Dalamud.Interface.Internal.Windows
 
             ImGuiHelpers.ScaledDummy(12);
 
-            ImGui.TextColored(ImGuiColors.DalamudGrey, "Total memory used by Dalamud & Plugins: " + FormatBytes(GC.GetTotalMemory(false)));
+            ImGui.TextColored(ImGuiColors.DalamudGrey, "Total memory used by Dalamud & Plugins: " + Util.FormatBytes(GC.GetTotalMemory(false)));
         }
 
         private void ProxySetting() {

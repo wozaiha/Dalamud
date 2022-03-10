@@ -30,7 +30,6 @@ namespace Dalamud.Utility
     /// </summary>
     public static class Util
     {
-        private static string gitHashInternal;
         private static List<FuckGFWSettings> fuckGFWList;
         private static string? gitHashInternal;
         private static string? gitHashClientStructsInternal;
@@ -515,6 +514,7 @@ namespace Dalamud.Utility
             return url;
         }
 
+        /// <summary>
         ///     Compress a string using GZip.
         /// </summary>
         /// <param name="str">The input string.</param>

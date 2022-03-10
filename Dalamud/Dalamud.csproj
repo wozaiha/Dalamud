@@ -103,8 +103,6 @@
             <VerFileClientStructs>$(IntermediateOutputPath)csver</VerFileClientStructs>
         </PropertyGroup>
         <!-- write the hash to the temp file.-->
-        <Exec Command="git -C &quot;$(ProjectDir.Replace('\','\\'))&quot; describe --long --always --dirty &gt; $(VerFile)" />
-        <Exec Command="git -C &quot;$(ProjectDir.Replace('\','\\'))\..\lib\FFXIVClientStructs&quot; describe --long --always --dirty &gt; $(VerFileClientStructs)" />
         <!-- read the version into the GitVersion itemGroup-->
         <ReadLinesFromFile File="$(VerFile)">
             <Output TaskParameter="Lines" ItemName="GitVersion" />
