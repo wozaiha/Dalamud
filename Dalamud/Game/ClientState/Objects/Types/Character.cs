@@ -4,6 +4,7 @@ using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Resolvers;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Memory;
+using Lumina.Excel.GeneratedSheets;
 
 namespace Dalamud.Game.ClientState.Objects.Types
 {
@@ -65,7 +66,7 @@ namespace Dalamud.Game.ClientState.Objects.Types
         /// <summary>
         /// Gets the ClassJob of this Chara.
         /// </summary>
-        public ExcelResolver<Lumina.Excel.GeneratedSheets.ClassJob> ClassJob => new(this.Struct->ClassJob);
+        public ExcelResolver<ClassJob> ClassJob => new(this.Struct->ClassJob);
 
         /// <summary>
         /// Gets the level of this Chara.
@@ -94,6 +95,11 @@ namespace Dalamud.Game.ClientState.Objects.Types
         public uint NameId => this.Struct->NameID;
 
         /// <summary>
+        /// Gets the current online status of the character.
+        /// </summary>
+        public ExcelResolver<OnlineStatus> OnlineStatus => new(this.Struct->OnlineStatus);
+
+        /// <summary>
         /// Gets the status flags.
         /// </summary>
         public StatusFlags StatusFlags => (StatusFlags)this.Struct->StatusFlags;
@@ -101,6 +107,6 @@ namespace Dalamud.Game.ClientState.Objects.Types
         /// <summary>
         /// Gets the underlying structure.
         /// </summary>
-        private protected new FFXIVClientStructs.FFXIV.Client.Game.Character.Character* Struct => (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)this.Address;
+        protected internal new FFXIVClientStructs.FFXIV.Client.Game.Character.Character* Struct => (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)this.Address;
     }
 }

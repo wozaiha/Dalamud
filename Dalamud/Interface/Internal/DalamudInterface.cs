@@ -1,17 +1,20 @@
 using System;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
+using CheapLoc;
 using Dalamud.Configuration.Internal;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.Gui;
 using Dalamud.Game.Internal;
 using Dalamud.Interface.Internal.ManagedAsserts;
 using Dalamud.Interface.Internal.Windows;
+using Dalamud.Interface.Internal.Windows.PluginInstaller;
 using Dalamud.Interface.Internal.Windows.SelfTest;
 using Dalamud.Interface.Internal.Windows.StyleEditor;
 using Dalamud.Interface.Style;
@@ -23,6 +26,7 @@ using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using ImGuiNET;
+using ImGuiScene;
 using PInvoke;
 using Serilog.Events;
 
@@ -48,6 +52,10 @@ namespace Dalamud.Interface.Internal
         private readonly SettingsWindow settingsWindow;
         private readonly SelfTestWindow selfTestWindow;
         private readonly StyleEditorWindow styleEditorWindow;
+        private readonly TitleScreenMenuWindow titleScreenMenuWindow;
+
+        private readonly TextureWrap logoTexture;
+        private readonly TextureWrap tsmLogoTexture;
 
         private ulong frameCount = 0;
 
@@ -82,6 +90,7 @@ namespace Dalamud.Interface.Internal
             this.settingsWindow = new SettingsWindow() { IsOpen = false };
             this.selfTestWindow = new SelfTestWindow() { IsOpen = false };
             this.styleEditorWindow = new StyleEditorWindow() { IsOpen = false };
+            this.titleScreenMenuWindow = new TitleScreenMenuWindow() { IsOpen = false };
 
             this.WindowSystem.AddWindow(this.changelogWindow);
             this.WindowSystem.AddWindow(this.colorDemoWindow);
@@ -96,10 +105,35 @@ namespace Dalamud.Interface.Internal
             this.WindowSystem.AddWindow(this.settingsWindow);
             this.WindowSystem.AddWindow(this.selfTestWindow);
             this.WindowSystem.AddWindow(this.styleEditorWindow);
+            this.WindowSystem.AddWindow(this.titleScreenMenuWindow);
 
             ImGuiManagedAsserts.AssertsEnabled = configuration.AssertsEnabledAtStartup;
 
-            Service<InterfaceManager>.Get().Draw += this.OnDraw;
+            var interfaceManager = Service<InterfaceManager>.Get();
+            interfaceManager.Draw += this.OnDraw;
+            var dalamud = Service<Dalamud>.Get();
+
+            var logoTex =
+                interfaceManager.LoadImage(Path.Combine(dalamud.AssetDirectory.FullName, "UIRes", "logo.png"));
+            var tsmLogoTex =
+                interfaceManager.LoadImage(Path.Combine(dalamud.AssetDirectory.FullName, "UIRes", "tsmLogo.png"));
+
+            if (logoTex == null || tsmLogoTex == null)
+            {
+                throw new Exception("Failed to load logo textures");
+            }
+
+            this.logoTexture = logoTex;
+            this.tsmLogoTexture = tsmLogoTex;
+
+            var tsm = Service<TitleScreenMenu>.Get();
+            tsm.AddEntry(Loc.Localize("TSMDalamudPlugins", "Plugin Installer"), this.tsmLogoTexture, () => this.pluginWindow.IsOpen = true);
+            tsm.AddEntry(Loc.Localize("TSMDalamudSettings", "Dalamud Settings"), this.tsmLogoTexture, () => this.settingsWindow.IsOpen = true);
+
+            if (configuration.IsConventionalStaging)
+            {
+                tsm.AddEntry(Loc.Localize("TSMDalamudDevMenu", "Developer Menu"), this.tsmLogoTexture, () => this.isImGuiDrawDevMenu = true);
+            }
         }
 
         /// <summary>
@@ -123,9 +157,14 @@ namespace Dalamud.Interface.Internal
 
             this.WindowSystem.RemoveAllWindows();
 
+            this.changelogWindow.Dispose();
             this.creditsWindow.Dispose();
             this.consoleWindow.Dispose();
             this.pluginWindow.Dispose();
+            this.titleScreenMenuWindow.Dispose();
+
+            this.logoTexture.Dispose();
+            this.tsmLogoTexture.Dispose();
         }
 
         #region Open
@@ -340,6 +379,8 @@ namespace Dalamud.Interface.Internal
 
             if (!this.isImGuiDrawDevMenu && !condition.Any())
             {
+                var config = Service<DalamudConfiguration>.Get();
+
                 ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
                 ImGui.PushStyleColor(ImGuiCol.ButtonActive, Vector4.Zero);
                 ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Vector4.Zero);
@@ -349,18 +390,25 @@ namespace Dalamud.Interface.Internal
                 ImGui.PushStyleColor(ImGuiCol.BorderShadow, new Vector4(0, 0, 0, 1));
                 ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0, 0, 0, 1));
 
-                var mainViewportPos = ImGui.GetMainViewport().Pos;
-                ImGui.SetNextWindowPos(new Vector2(mainViewportPos.X, mainViewportPos.Y), ImGuiCond.Always);
+                ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
+                ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, Vector2.Zero);
+                ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0);
+                ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, 0);
+
+                var windowPos = ImGui.GetMainViewport().Pos + new Vector2(20);
+                ImGui.SetNextWindowPos(windowPos, ImGuiCond.Always);
                 ImGui.SetNextWindowBgAlpha(1);
 
                 if (ImGui.Begin("DevMenu Opener", ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoSavedSettings))
                 {
-                    if (ImGui.Button("###devMenuOpener", new Vector2(40, 25)))
+                    ImGui.SetNextItemWidth(40);
+                    if (ImGui.Button("###devMenuOpener", new Vector2(20, 20)))
                         this.isImGuiDrawDevMenu = true;
 
                     ImGui.End();
                 }
 
+                ImGui.PopStyleVar(4);
                 ImGui.PopStyleColor(8);
             }
         }
@@ -486,15 +534,17 @@ namespace Dalamud.Interface.Internal
 
                         ImGui.Separator();
 
-                        if (ImGui.MenuItem("Enable Dalamud testing", string.Empty, configuration.DoDalamudTest))
+                        var isBeta = configuration.DalamudBetaKey == DalamudConfiguration.DalamudCurrentBetaKey;
+                        if (ImGui.MenuItem("Enable Dalamud testing", string.Empty, isBeta))
                         {
-                            configuration.DoDalamudTest ^= true;
+                            configuration.DalamudBetaKey = isBeta ? null : DalamudConfiguration.DalamudCurrentBetaKey;
                             configuration.Save();
                         }
 
                         var startInfo = Service<DalamudStartInfo>.Get();
                         ImGui.MenuItem(Util.AssemblyVersion, false);
                         ImGui.MenuItem(startInfo.GameVersion.ToString(), false);
+                        ImGui.MenuItem($"CS: {Util.GetGitHashClientStructs()}", false);
 
                         ImGui.EndMenu();
                     }
@@ -618,7 +668,7 @@ namespace Dalamud.Interface.Internal
 
                         ImGui.Separator();
 
-                        if (ImGui.MenuItem("Load all API levels", null, configuration.LoadAllApiLevels))
+                        if (ImGui.MenuItem("Load all API levels (ONLY FOR DEVELOPERS!!!)", null, configuration.LoadAllApiLevels))
                         {
                             configuration.LoadAllApiLevels = !configuration.LoadAllApiLevels;
                             configuration.Save();
@@ -674,9 +724,14 @@ namespace Dalamud.Interface.Internal
                     if (Service<GameGui>.Get().GameUiHidden)
                         ImGui.BeginMenu("UI is hidden...", false);
 
+                    ImGui.PushFont(InterfaceManager.MonoFont);
+
                     ImGui.BeginMenu(Util.GetGitHash(), false);
-                    ImGui.BeginMenu(this.frameCount.ToString(), false);
-                    ImGui.BeginMenu(ImGui.GetIO().Framerate.ToString("F2"), false);
+                    ImGui.BeginMenu(this.frameCount.ToString("000000"), false);
+                    ImGui.BeginMenu(ImGui.GetIO().Framerate.ToString("000"), false);
+                    ImGui.BeginMenu($"{Util.FormatBytes(GC.GetTotalMemory(false))}", false);
+
+                    ImGui.PopFont();
 
                     ImGui.EndMainMenuBar();
                 }

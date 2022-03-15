@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 
 using Dalamud.Game.Text;
+using Dalamud.Interface.GameFonts;
 using Dalamud.Interface.Style;
 using Newtonsoft.Json;
 using Serilog;
@@ -16,6 +17,11 @@ namespace Dalamud.Configuration.Internal
     [Serializable]
     internal sealed class DalamudConfiguration
     {
+        /// <summary>
+        /// Currently used beta key for Dalamud staging builds.
+        /// </summary>
+        public const string DalamudCurrentBetaKey = "proof of context";
+
         private static readonly JsonSerializerSettings SerializerSettings = new()
         {
             TypeNameHandling = TypeNameHandling.All,
@@ -36,6 +42,12 @@ namespace Dalamud.Configuration.Internal
         /// Event that occurs when dalamud configuration is saved.
         /// </summary>
         public event DalamudConfigurationSavedDelegate DalamudConfigurationSaved;
+
+        /// <summary>
+        /// Gets a value indicating whether or not Dalamud staging is enabled.
+        /// </summary>
+        [JsonIgnore]
+        public bool IsConventionalStaging => this.DalamudBetaKey == DalamudCurrentBetaKey;
 
         /// <summary>
         /// Gets or sets a list of muted works.
@@ -78,14 +90,9 @@ namespace Dalamud.Configuration.Internal
         public bool DoPluginTest { get; set; } = false;
 
         /// <summary>
-        /// Gets or sets a value indicating whether or not Dalamud testing builds should be used.
+        /// Gets or sets a key to opt into Dalamud staging builds.
         /// </summary>
-        public bool DoDalamudTest { get; set; } = false;
-
-        /// <summary>
-        /// Gets or sets a value indicating whether or not XL should download the Dalamud .NET runtime.
-        /// </summary>
-        public bool DoDalamudRuntime { get; set; } = false;
+        public string? DalamudBetaKey { get; set; } = null;
 
         /// <summary>
         /// Gets or sets a list of fuck GFW replacements.
@@ -126,6 +133,20 @@ namespace Dalamud.Configuration.Internal
         /// Gets or sets the global UI scale.
         /// </summary>
         public float GlobalUiScale { get; set; } = 1.0f;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to use AXIS fonts from the game.
+        /// </summary>
+        public bool UseAxisFontsFromGame { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets the gamma value to apply for Dalamud fonts. Effects text thickness.
+        ///
+        /// Before gamma is applied...
+        /// * ...TTF fonts loaded with stb or FreeType are in linear space.
+        /// * ...the game's prebaked AXIS fonts are in gamma space with gamma value of 1.4.
+        /// </summary>
+        public float FontGamma { get; set; } = 1.0f;
 
         /// <summary>
         /// Gets or sets a value indicating whether or not plugin UI should be hidden.
@@ -203,7 +224,7 @@ namespace Dalamud.Configuration.Internal
         public bool IsAntiAntiDebugEnabled { get; set; } = false;
 
         /// <summary>
-        /// Gets or sets the kind of beta to download when <see cref="DoDalamudTest"/> is set to true.
+        /// Gets or sets the kind of beta to download when <see cref="DalamudBetaKey"/> matches the server value.
         /// </summary>
         public string DalamudBetaKind { get; set; }
 
@@ -261,13 +282,42 @@ namespace Dalamud.Configuration.Internal
         public int ProxyPort { get; set; } = 1080;
 
         /// <summary>
+        /// Gets or sets the order of DTR elements, by title.
+        /// </summary>
+        public List<string>? DtrOrder { get; set; }
+
+        /// <summary>
+        /// Gets or sets the list of ignored DTR elements, by title.
+        /// </summary>
+        public List<string>? DtrIgnore { get; set; }
+
+        /// <summary>
+        /// Gets or sets the spacing used for DTR entries.
+        /// </summary>
+        public int DtrSpacing { get; set; } = 10;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to swap the
+        /// direction in which elements are drawn in the DTR.
+        /// False indicates that elements will be drawn from the end of
+        /// the left side of the Server Info bar, and continue leftwards.
+        /// True indicates the opposite.
+        /// </summary>
+        public bool DtrSwapDirection { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the title screen menu is shown.
+        /// </summary>
+        public bool ShowTsm { get; set; } = true;
+
+        /// <summary>
         /// Load a configuration from the provided path.
         /// </summary>
         /// <param name="path">The path to load the configuration file from.</param>
         /// <returns>The deserialized configuration file.</returns>
         public static DalamudConfiguration Load(string path)
         {
-            DalamudConfiguration deserialized;
+            DalamudConfiguration deserialized = null;
             try
             {
                 deserialized = JsonConvert.DeserializeObject<DalamudConfiguration>(File.ReadAllText(path), SerializerSettings);
@@ -275,9 +325,9 @@ namespace Dalamud.Configuration.Internal
             catch (Exception ex)
             {
                 Log.Warning(ex, "Failed to load DalamudConfiguration at {0}", path);
-                deserialized = new DalamudConfiguration();
             }
 
+            deserialized ??= new DalamudConfiguration();
             deserialized.configPath = path;
 
             return deserialized;

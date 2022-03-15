@@ -11,12 +11,12 @@ using Dalamud.Configuration.Internal;
 using Dalamud.Data;
 using Dalamud.Game;
 using Dalamud.Game.ClientState;
+using Dalamud.Game.ClientState.Aetherytes;
 using Dalamud.Game.ClientState.Buddy;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Fates;
 using Dalamud.Game.ClientState.GamePad;
 using Dalamud.Game.ClientState.JobGauge;
-using Dalamud.Game.ClientState.JobGauge.Enums;
 using Dalamud.Game.ClientState.JobGauge.Types;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.ClientState.Objects;
@@ -25,6 +25,7 @@ using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.ClientState.Party;
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui;
+using Dalamud.Game.Gui.Dtr;
 using Dalamud.Game.Gui.FlyText;
 using Dalamud.Game.Gui.Toast;
 using Dalamud.Game.Text;
@@ -53,6 +54,7 @@ namespace Dalamud.Interface.Internal.Windows
         private readonly string[] dataKindNames = Enum.GetNames(typeof(DataKind)).Select(k => k.Replace("_", " ")).ToArray();
 
         private bool wasReady;
+        private bool isExcept;
         private string serverOpString;
         private DataKind currentKind;
 
@@ -107,6 +109,11 @@ namespace Dalamud.Interface.Internal.Windows
         private Vector4 inputTintCol = Vector4.One;
         private Vector2 inputTexScale = Vector2.Zero;
 
+        // DTR
+        private DtrBarEntry? dtrTest1;
+        private DtrBarEntry? dtrTest2;
+        private DtrBarEntry? dtrTest3;
+
         private uint copyButtonIndex = 0;
 
         /// <summary>
@@ -156,6 +163,8 @@ namespace Dalamud.Interface.Internal.Windows
             Configuration,
             TaskSched,
             Hook,
+            Aetherytes,
+            Dtr_Bar,
         }
 
         /// <inheritdoc/>
@@ -335,15 +344,32 @@ namespace Dalamud.Interface.Internal.Windows
                         case DataKind.Hook:
                             this.DrawHook();
                             break;
+
+                        case DataKind.Aetherytes:
+                            this.DrawAetherytes();
+                            break;
+
+                        case DataKind.Dtr_Bar:
+                            this.DrawDtr();
+                            break;
                     }
                 }
                 else
                 {
                     ImGui.TextUnformatted("Data not ready.");
                 }
+
+                this.isExcept = false;
             }
             catch (Exception ex)
             {
+                if (!this.isExcept)
+                {
+                    Log.Error(ex, "Could not draw data");
+                }
+
+                this.isExcept = true;
+
                 ImGui.TextUnformatted(ex.ToString());
             }
 
@@ -769,164 +795,37 @@ namespace Dalamud.Interface.Internal.Windows
             }
 
             var jobID = player.ClassJob.Id;
-            if (jobID == 19)
+            JobGaugeBase? gauge = jobID switch
             {
-                var gauge = jobGauges.Get<PLDGauge>();
-                ImGui.Text($"Address: 0x{gauge.Address.ToInt64():X}");
-                ImGui.Text($"{nameof(gauge.OathGauge)}: {gauge.OathGauge}");
-            }
-            else if (jobID == 20)
-            {
-                var gauge = jobGauges.Get<MNKGauge>();
-                ImGui.Text($"Address: 0x{gauge.Address.ToInt64():X}");
-                ImGui.Text($"{nameof(gauge.Chakra)}: {gauge.Chakra}");
-            }
-            else if (jobID == 21)
-            {
-                var gauge = jobGauges.Get<WARGauge>();
-                ImGui.Text($"Address: 0x{gauge.Address.ToInt64():X}");
-                ImGui.Text($"{nameof(gauge.BeastGauge)}: {gauge.BeastGauge}");
-            }
-            else if (jobID == 22)
-            {
-                var gauge = jobGauges.Get<DRGGauge>();
-                ImGui.Text($"Address: 0x{gauge.Address.ToInt64():X}");
-                ImGui.Text($"{nameof(gauge.BOTDTimer)}: {gauge.BOTDTimer}");
-                ImGui.Text($"{nameof(gauge.BOTDState)}: {gauge.BOTDState}");
-                ImGui.Text($"{nameof(gauge.EyeCount)}: {gauge.EyeCount}");
-            }
-            else if (jobID == 23)
-            {
-                var gauge = jobGauges.Get<BRDGauge>();
-                ImGui.Text($"Address: 0x{gauge.Address.ToInt64():X}");
-                ImGui.Text($"{nameof(gauge.SongTimer)}: {gauge.SongTimer}");
-                ImGui.Text($"{nameof(gauge.Repertoire)}: {gauge.Repertoire}");
-                ImGui.Text($"{nameof(gauge.SoulVoice)}: {gauge.SoulVoice}");
-                ImGui.Text($"{nameof(gauge.Song)}: {gauge.Song}");
-            }
-            else if (jobID == 24)
-            {
-                var gauge = jobGauges.Get<WHMGauge>();
-                ImGui.Text($"Address: 0x{gauge.Address.ToInt64():X}");
-                ImGui.Text($"{nameof(gauge.LilyTimer)}: {gauge.LilyTimer}");
-                ImGui.Text($"{nameof(gauge.Lily)}: {gauge.Lily}");
-                ImGui.Text($"{nameof(gauge.BloodLily)}: {gauge.BloodLily}");
-            }
-            else if (jobID == 25)
-            {
-                var gauge = jobGauges.Get<BLMGauge>();
-                ImGui.Text($"Address: 0x{gauge.Address.ToInt64():X}");
-                ImGui.Text($"{nameof(gauge.EnochianTimer)}: {gauge.EnochianTimer}");
-                ImGui.Text($"{nameof(gauge.ElementTimeRemaining)}: {gauge.ElementTimeRemaining}");
-                ImGui.Text($"{nameof(gauge.PolyglotStacks)}: {gauge.PolyglotStacks}");
-                ImGui.Text($"{nameof(gauge.UmbralHearts)}: {gauge.UmbralHearts}");
-                ImGui.Text($"{nameof(gauge.UmbralIceStacks)}: {gauge.UmbralIceStacks}");
-                ImGui.Text($"{nameof(gauge.AstralFireStacks)}: {gauge.AstralFireStacks}");
-                ImGui.Text($"{nameof(gauge.InUmbralIce)}: {gauge.InUmbralIce}");
-                ImGui.Text($"{nameof(gauge.InAstralFire)}: {gauge.InAstralFire}");
-                ImGui.Text($"{nameof(gauge.IsEnochianActive)}: {gauge.IsEnochianActive}");
-            }
-            else if (jobID == 27)
-            {
-                var gauge = jobGauges.Get<SMNGauge>();
-                ImGui.Text($"Address: 0x{gauge.Address.ToInt64():X}");
-                ImGui.Text($"{nameof(gauge.TimerRemaining)}: {gauge.TimerRemaining}");
-                ImGui.Text($"{nameof(gauge.ReturnSummon)}: {gauge.ReturnSummon}");
-                ImGui.Text($"{nameof(gauge.ReturnSummonGlam)}: {gauge.ReturnSummonGlam}");
-                ImGui.Text($"{nameof(gauge.AetherFlags)}: {gauge.AetherFlags}");
-                ImGui.Text($"{nameof(gauge.IsPhoenixReady)}: {gauge.IsPhoenixReady}");
-                ImGui.Text($"{nameof(gauge.IsBahamutReady)}: {gauge.IsBahamutReady}");
-                ImGui.Text($"{nameof(gauge.HasAetherflowStacks)}: {gauge.HasAetherflowStacks}");
-            }
-            else if (jobID == 28)
-            {
-                var gauge = jobGauges.Get<SCHGauge>();
-                ImGui.Text($"Address: 0x{gauge.Address.ToInt64():X}");
-                ImGui.Text($"{nameof(gauge.Aetherflow)}: {gauge.Aetherflow}");
-                ImGui.Text($"{nameof(gauge.FairyGauge)}: {gauge.FairyGauge}");
-                ImGui.Text($"{nameof(gauge.SeraphTimer)}: {gauge.SeraphTimer}");
-                ImGui.Text($"{nameof(gauge.DismissedFairy)}: {gauge.DismissedFairy}");
-            }
-            else if (jobID == 30)
-            {
-                var gauge = jobGauges.Get<NINGauge>();
-                ImGui.Text($"Address: 0x{gauge.Address.ToInt64():X}");
-                ImGui.Text($"{nameof(gauge.HutonTimer)}: {gauge.HutonTimer}");
-                ImGui.Text($"{nameof(gauge.Ninki)}: {gauge.Ninki}");
-                ImGui.Text($"{nameof(gauge.HutonManualCasts)}: {gauge.HutonManualCasts}");
-            }
-            else if (jobID == 31)
-            {
-                var gauge = jobGauges.Get<MCHGauge>();
-                ImGui.Text($"Address: 0x{gauge.Address.ToInt64():X}");
-                ImGui.Text($"{nameof(gauge.OverheatTimeRemaining)}: {gauge.OverheatTimeRemaining}");
-                ImGui.Text($"{nameof(gauge.SummonTimeRemaining)}: {gauge.SummonTimeRemaining}");
-                ImGui.Text($"{nameof(gauge.Heat)}: {gauge.Heat}");
-                ImGui.Text($"{nameof(gauge.Battery)}: {gauge.Battery}");
-                ImGui.Text($"{nameof(gauge.LastSummonBatteryPower)}: {gauge.LastSummonBatteryPower}");
-                ImGui.Text($"{nameof(gauge.IsOverheated)}: {gauge.IsOverheated}");
-                ImGui.Text($"{nameof(gauge.IsRobotActive)}: {gauge.IsRobotActive}");
-            }
-            else if (jobID == 32)
-            {
-                var gauge = jobGauges.Get<DRKGauge>();
-                ImGui.Text($"Address: 0x{gauge.Address.ToInt64():X}");
-                ImGui.Text($"{nameof(gauge.Blood)}: {gauge.Blood}");
-                ImGui.Text($"{nameof(gauge.DarksideTimeRemaining)}: {gauge.DarksideTimeRemaining}");
-                ImGui.Text($"{nameof(gauge.ShadowTimeRemaining)}: {gauge.ShadowTimeRemaining}");
-                ImGui.Text($"{nameof(gauge.HasDarkArts)}: {gauge.HasDarkArts}");
-            }
-            else if (jobID == 33)
-            {
-                var gauge = jobGauges.Get<ASTGauge>();
-                ImGui.Text($"Address: 0x{gauge.Address.ToInt64():X}");
-                ImGui.Text($"{nameof(gauge.DrawnCard)}: {gauge.DrawnCard}");
-                foreach (var seal in Enum.GetValues(typeof(SealType)).Cast<SealType>())
-                {
-                    var sealName = Enum.GetName(typeof(SealType), seal);
-                    ImGui.Text($"{nameof(gauge.ContainsSeal)}({sealName}): {gauge.ContainsSeal(seal)}");
-                }
-            }
-            else if (jobID == 34)
-            {
-                var gauge = jobGauges.Get<SAMGauge>();
-                ImGui.Text($"Address: 0x{gauge.Address.ToInt64():X}");
-                ImGui.Text($"{nameof(gauge.Kenki)}: {gauge.Kenki}");
-                ImGui.Text($"{nameof(gauge.MeditationStacks)}: {gauge.MeditationStacks}");
-                ImGui.Text($"{nameof(gauge.Sen)}: {gauge.Sen}");
-                ImGui.Text($"{nameof(gauge.HasSetsu)}: {gauge.HasSetsu}");
-                ImGui.Text($"{nameof(gauge.HasGetsu)}: {gauge.HasGetsu}");
-                ImGui.Text($"{nameof(gauge.HasKa)}: {gauge.HasKa}");
-            }
-            else if (jobID == 35)
-            {
-                var gauge = jobGauges.Get<RDMGauge>();
-                ImGui.Text($"Address: 0x{gauge.Address.ToInt64():X}");
-                ImGui.Text($"{nameof(gauge.WhiteMana)}: {gauge.WhiteMana}");
-                ImGui.Text($"{nameof(gauge.BlackMana)}: {gauge.BlackMana}");
-            }
-            else if (jobID == 37)
-            {
-                var gauge = jobGauges.Get<GNBGauge>();
-                ImGui.Text($"Address: 0x{gauge.Address.ToInt64():X}");
-                ImGui.Text($"{nameof(gauge.Ammo)}: {gauge.Ammo}");
-                ImGui.Text($"{nameof(gauge.MaxTimerDuration)}: {gauge.MaxTimerDuration}");
-                ImGui.Text($"{nameof(gauge.AmmoComboStep)}: {gauge.AmmoComboStep}");
-            }
-            else if (jobID == 38)
-            {
-                var gauge = jobGauges.Get<DNCGauge>();
-                ImGui.Text($"Address: 0x{gauge.Address.ToInt64():X}");
-                ImGui.Text($"{nameof(gauge.Feathers)}: {gauge.Feathers}");
-                ImGui.Text($"{nameof(gauge.Esprit)}: {gauge.Esprit}");
-                ImGui.Text($"{nameof(gauge.CompletedSteps)}: {gauge.CompletedSteps}");
-                ImGui.Text($"{nameof(gauge.NextStep)}: {gauge.NextStep}");
-                ImGui.Text($"{nameof(gauge.IsDancing)}: {gauge.IsDancing}");
-            }
-            else
+                19 => jobGauges.Get<PLDGauge>(),
+                20 => jobGauges.Get<MNKGauge>(),
+                21 => jobGauges.Get<WARGauge>(),
+                22 => jobGauges.Get<DRGGauge>(),
+                23 => jobGauges.Get<BRDGauge>(),
+                24 => jobGauges.Get<WHMGauge>(),
+                25 => jobGauges.Get<BLMGauge>(),
+                27 => jobGauges.Get<SMNGauge>(),
+                28 => jobGauges.Get<SCHGauge>(),
+                30 => jobGauges.Get<NINGauge>(),
+                31 => jobGauges.Get<MCHGauge>(),
+                32 => jobGauges.Get<DRKGauge>(),
+                33 => jobGauges.Get<ASTGauge>(),
+                34 => jobGauges.Get<SAMGauge>(),
+                35 => jobGauges.Get<RDMGauge>(),
+                37 => jobGauges.Get<GNBGauge>(),
+                38 => jobGauges.Get<DNCGauge>(),
+                39 => jobGauges.Get<RPRGauge>(),
+                40 => jobGauges.Get<SGEGauge>(),
+                _ => null,
+            };
+
+            if (gauge == null)
             {
                 ImGui.Text("No supported gauge exists for this job.");
+                return;
             }
+
+            Util.ShowObject(gauge);
         }
 
         private void DrawCommand()
@@ -1146,15 +1045,16 @@ namespace Dalamud.Interface.Internal.Windows
                 this.PrintGameObject(targetMgr.Target, "CurrentTarget");
 
                 ImGui.Text("Target");
-                Util.ShowObject(targetMgr.Target);
+                Util.ShowGameObjectStruct(targetMgr.Target);
 
                 var tot = targetMgr.Target.TargetObject;
                 if (tot != null)
                 {
                     ImGuiHelpers.ScaledDummy(10);
 
+                    ImGui.Separator();
                     ImGui.Text("ToT");
-                    Util.ShowObject(tot);
+                    Util.ShowGameObjectStruct(tot);
                 }
 
                 ImGuiHelpers.ScaledDummy(10);
@@ -1633,6 +1533,122 @@ namespace Dalamud.Interface.Internal.Windows
             catch (Exception ex)
             {
                 Log.Error(ex, "MinHook error caught");
+            }
+        }
+
+        private void DrawAetherytes()
+        {
+            if (!ImGui.BeginTable("##aetheryteTable", 11, ImGuiTableFlags.ScrollY | ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders))
+                return;
+
+            ImGui.TableSetupScrollFreeze(0, 1);
+            ImGui.TableSetupColumn("Idx", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("ID", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("Zone", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("Ward", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("Plot", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("Sub", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("Gil", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("Fav", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("Shared", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("Appartment", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableHeadersRow();
+
+            var tpList = Service<AetheryteList>.Get();
+
+            for (var i = 0; i < tpList.Length; i++)
+            {
+                var info = tpList[i];
+                if (info == null)
+                    continue;
+
+                ImGui.TableNextColumn(); // Idx
+                ImGui.TextUnformatted($"{i}");
+
+                ImGui.TableNextColumn(); // Name
+                ImGui.TextUnformatted($"{info.AetheryteData.GameData.PlaceName.Value?.Name}");
+
+                ImGui.TableNextColumn(); // ID
+                ImGui.TextUnformatted($"{info.AetheryteId}");
+
+                ImGui.TableNextColumn(); // Zone
+                ImGui.TextUnformatted($"{info.TerritoryId}");
+
+                ImGui.TableNextColumn(); // Ward
+                ImGui.TextUnformatted($"{info.Ward}");
+
+                ImGui.TableNextColumn(); // Plot
+                ImGui.TextUnformatted($"{info.Plot}");
+
+                ImGui.TableNextColumn(); // Sub
+                ImGui.TextUnformatted($"{info.SubIndex}");
+
+                ImGui.TableNextColumn(); // Gil
+                ImGui.TextUnformatted($"{info.GilCost}");
+
+                ImGui.TableNextColumn(); // Favourite
+                ImGui.TextUnformatted($"{info.IsFavourite}");
+
+                ImGui.TableNextColumn(); // Shared
+                ImGui.TextUnformatted($"{info.IsSharedHouse}");
+
+                ImGui.TableNextColumn(); // Appartment
+                ImGui.TextUnformatted($"{info.IsAppartment}");
+            }
+
+            ImGui.EndTable();
+        }
+
+        private void DrawDtr()
+        {
+            this.DrawDtrTestEntry(ref this.dtrTest1, "DTR Test #1");
+            ImGui.Separator();
+            this.DrawDtrTestEntry(ref this.dtrTest2, "DTR Test #2");
+            ImGui.Separator();
+            this.DrawDtrTestEntry(ref this.dtrTest3, "DTR Test #3");
+            ImGui.Separator();
+
+            var configuration = Service<DalamudConfiguration>.Get();
+            if (configuration.DtrOrder != null)
+            {
+                ImGui.Separator();
+
+                foreach (var order in configuration.DtrOrder)
+                {
+                    ImGui.Text(order);
+                }
+            }
+        }
+
+        private void DrawDtrTestEntry(ref DtrBarEntry? entry, string title)
+        {
+            var dtrBar = Service<DtrBar>.Get();
+
+            if (entry != null)
+            {
+                ImGui.Text(title);
+
+                var text = entry.Text?.TextValue ?? string.Empty;
+                if (ImGui.InputText($"Text###{entry.Title}t", ref text, 255))
+                    entry.Text = text;
+
+                var shown = entry.Shown;
+                if (ImGui.Checkbox($"Shown###{entry.Title}s", ref shown))
+                    entry.Shown = shown;
+
+                if (ImGui.Button($"Remove###{entry.Title}r"))
+                {
+                    entry.Remove();
+                    entry = null;
+                }
+            }
+            else
+            {
+                if (ImGui.Button($"Add###{title}"))
+                {
+                    entry = dtrBar.Get(title, title);
+                }
             }
         }
 

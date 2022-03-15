@@ -8,6 +8,7 @@ using Dalamud.Game;
 using Dalamud.Game.Gui;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Internal;
+using Dalamud.Utility;
 using ImGuiNET;
 using ImGuiScene;
 
@@ -45,6 +46,7 @@ Aireil
 kalilistic
 MgAl2O4
 ascclemens
+r00telement
 
 
 
@@ -101,15 +103,14 @@ aers
 We use these awesome C# libraries:
 
 Lumina by Adam
-FFXIVClientStructs by aers
+FFXIVClientStructs by aers ({2})
 
 DotNetCorePlugins
 Copyright (c) Nate McMaster 
 Licensed under the Apache License, Version 2.0
 See License.txt for license information.
 
-Thanks to everyone in the XIVLauncher
-Discord server
+Thanks to everyone in the XIVLauncher Discord server
 
 Join us at: https://discord.gg/3NMcUV5
 
@@ -155,7 +156,7 @@ Thank you for using XIVLauncher and Dalamud!
                 .Select(plugin => $"{plugin.Manifest.Name} by {plugin.Manifest.Author}\n")
                 .Aggregate(string.Empty, (current, next) => $"{current}{next}");
 
-            this.creditsText = string.Format(CreditsTextTempl, typeof(Dalamud).Assembly.GetName().Version, pluginCredits);
+            this.creditsText = string.Format(CreditsTextTempl, typeof(Dalamud).Assembly.GetName().Version, pluginCredits, Util.GetGitHashClientStructs());
 
             Service<GameGui>.Get().SetBgm(132);
             this.creditsThrottler.Restart();

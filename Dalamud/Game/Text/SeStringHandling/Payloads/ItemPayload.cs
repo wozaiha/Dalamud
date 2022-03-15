@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -5,6 +6,7 @@ using System.Text;
 
 using Lumina.Excel.GeneratedSheets;
 using Newtonsoft.Json;
+using Serilog;
 
 namespace Dalamud.Game.Text.SeStringHandling.Payloads
 {
@@ -22,7 +24,7 @@ namespace Dalamud.Game.Text.SeStringHandling.Payloads
         private string? displayName;
 
         [JsonProperty]
-        private uint itemId;
+        private uint rawItemId;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ItemPayload"/> class.
@@ -35,8 +37,30 @@ namespace Dalamud.Game.Text.SeStringHandling.Payloads
         /// TextPayload that is a part of a full item link in chat.</param>
         public ItemPayload(uint itemId, bool isHq, string? displayNameOverride = null)
         {
-            this.itemId = itemId;
+            this.rawItemId = itemId;
+            if (isHq)
+                this.rawItemId += (uint)ItemKind.Hq;
+
             this.Kind = isHq ? ItemKind.Hq : ItemKind.Normal;
+            this.displayName = displayNameOverride;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ItemPayload"/> class.
+        /// Creates a payload representing an interactable item link for the specified item.
+        /// </summary>
+        /// <param name="itemId">The id of the item.</param>
+        /// <param name="kind">Kind of item to encode.</param>
+        /// <param name="displayNameOverride">An optional name to include in the item link.  Typically this should
+        /// be left as null, or set to the normal item name.  Actual overrides are better done with the subsequent
+        /// TextPayload that is a part of a full item link in chat.</param>
+        public ItemPayload(uint itemId, ItemKind kind = ItemKind.Normal, string? displayNameOverride = null)
+        {
+            this.Kind = kind;
+            this.rawItemId = itemId;
+            if (kind != ItemKind.EventItem)
+                this.rawItemId += (uint)kind;
+
             this.displayName = displayNameOverride;
         }
 
@@ -90,6 +114,32 @@ namespace Dalamud.Game.Text.SeStringHandling.Payloads
             EventItem = 2_000_000,
         }
 
+        /// <summary>
+        /// Kinds of items that can be fetched from this payload.
+        /// </summary>
+        public enum ItemKind : uint
+        {
+            /// <summary>
+            /// Normal items.
+            /// </summary>
+            Normal,
+
+            /// <summary>
+            /// Collectible Items.
+            /// </summary>
+            Collectible = 500_000,
+
+            /// <summary>
+            /// High-Quality items.
+            /// </summary>
+            Hq = 1_000_000,
+
+            /// <summary>
+            /// Event/Key items.
+            /// </summary>
+            EventItem = 2_000_000,
+        }
+
         /// <inheritdoc/>
         public override PayloadType Type => PayloadType.Item;
 
@@ -112,10 +162,16 @@ namespace Dalamud.Game.Text.SeStringHandling.Payloads
         }
 
         /// <summary>
-        /// Gets the raw item ID of this payload.
+        /// Gets the actual item ID of this payload.
         /// </summary>
         [JsonIgnore]
-        public uint ItemId => this.itemId;
+        public uint ItemId => GetAdjustedId(this.rawItemId).ItemId;
+
+        /// <summary>
+        /// Gets the raw, unadjusted item ID of this payload.
+        /// </summary>
+        [JsonIgnore]
+        public uint RawItemId => this.rawItemId;
 
         /// <summary>
         /// Gets the underlying Lumina Item represented by this payload.
@@ -124,7 +180,21 @@ namespace Dalamud.Game.Text.SeStringHandling.Payloads
         /// The value is evaluated lazily and cached.
         /// </remarks>
         [JsonIgnore]
-        public Item? Item => this.item ??= this.DataResolver.GetExcelSheet<Item>()!.GetRow(this.itemId);
+        public Item? Item
+        {
+            get
+            {
+                // TODO(goat): This should be revamped/removed on an API level change.
+                if (this.Kind == ItemKind.EventItem)
+                {
+                    Log.Warning("Event items cannot be fetched from the ItemPayload");
+                    return null;
+                }
+
+                this.item ??= this.DataResolver.GetExcelSheet<Item>()!.GetRow(this.ItemId);
+                return this.item;
+            }
+        }
 
         /// <summary>
         /// Gets a value indicating whether or not this item link is for a high-quality version of the item.
@@ -156,15 +226,13 @@ namespace Dalamud.Game.Text.SeStringHandling.Payloads
         /// <inheritdoc/>
         public override string ToString()
         {
-            return $"{this.Type} - ItemId: {this.itemId}, Kind: {this.Kind}, Name: {this.displayName ?? this.Item?.Name}";
+            return $"{this.Type} - ItemId: {this.ItemId}, Kind: {this.Kind}, Name: {this.displayName ?? this.Item?.Name}";
         }
 
         /// <inheritdoc/>
         protected override byte[] EncodeImpl()
         {
-            var actualItemId = this.itemId - (uint)this.Kind;
-
-            var idBytes = MakeInteger(actualItemId);
+            var idBytes = MakeInteger(this.rawItemId);
             var hasName = !string.IsNullOrEmpty(this.displayName);
 
             var chunkLen = idBytes.Length + 4;
@@ -218,10 +286,8 @@ namespace Dalamud.Game.Text.SeStringHandling.Payloads
         /// <inheritdoc/>
         protected override void DecodeImpl(BinaryReader reader, long endOfStream)
         {
-            var (id, kind) = GetAdjustedId(GetInteger(reader));
-
-            this.itemId = id;
-            this.Kind = kind;
+            this.rawItemId = GetInteger(reader);
+            this.Kind = GetAdjustedId(this.rawItemId).Kind;
 
             if (reader.BaseStream.Position + 3 < endOfStream)
             {
@@ -253,7 +319,7 @@ namespace Dalamud.Game.Text.SeStringHandling.Payloads
             {
                 > 500_000 and < 1_000_000 => (rawItemId - 500_000, ItemKind.Collectible),
                 > 1_000_000 and < 2_000_000 => (rawItemId - 1_000_000, ItemKind.Hq),
-                > 2_000_000 => (rawItemId - 2_000_000, ItemKind.EventItem),
+                > 2_000_000 => (rawItemId, ItemKind.EventItem), // EventItem IDs are NOT adjusted
                 _ => (rawItemId, ItemKind.Normal),
             };
         }
