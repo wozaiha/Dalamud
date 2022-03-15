@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -409,7 +410,8 @@ namespace Dalamud.Plugin.Internal
             var downloadUrl = useTesting ? repoManifest.DownloadLinkTesting : repoManifest.DownloadLinkInstall;
             var version = useTesting ? repoManifest.TestingAssemblyVersion : repoManifest.AssemblyVersion;
 
-            var response = await Util.HttpClient.GetAsync(downloadUrl);
+            using var client = new HttpClient();
+            var response = await client.GetAsync(Util.FuckGFW(downloadUrl));
             response.EnsureSuccessStatusCode();
 
             var outputDir = new DirectoryInfo(Path.Combine(this.pluginDirectory.FullName, repoManifest.InternalName, version.ToString()));

@@ -4,9 +4,9 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Numerics;
 using System.Net;
 using System.Net.Http;
-using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -30,9 +30,9 @@ namespace Dalamud.Utility
     /// </summary>
     public static class Util
     {
-        private static List<FuckGFWSettings> fuckGFWList;
         private static string? gitHashInternal;
         private static string? gitHashClientStructsInternal;
+        private static List<FuckGFWSettings> fuckGFWList;
 
         private static ulong moduleStartAddr;
         private static ulong moduleEndAddr;
@@ -514,7 +514,6 @@ namespace Dalamud.Utility
             return url;
         }
 
-        /// <summary>
         ///     Compress a string using GZip.
         /// </summary>
         /// <param name="str">The input string.</param>
@@ -602,8 +601,9 @@ namespace Dalamud.Utility
         /// <param name="proxyPort">The proxy port.</param>
         public static void SetProxy(bool useSystemProxy, string proxyHost = "", int proxyPort = 0) {
             var proxy = useSystemProxy ? WebRequest.GetSystemWebProxy() : new WebProxy(proxyHost, proxyPort);
-            if (useSystemProxy)
+            if (useSystemProxy) {
                 Log.Information($"Current proxy is default proxy of system.");
+            }
             else {
                 Log.Information($"Current proxy is {proxyHost}:{proxyPort}.");
             }

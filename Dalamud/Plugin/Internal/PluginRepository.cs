@@ -15,8 +15,7 @@ namespace Dalamud.Plugin.Internal
     /// </summary>
     internal class PluginRepository
     {
-        // TODO: Change back to master after api4 release
-        private const string DalamudPluginsMasterUrl = "https://dalamudplugins-1253720819.cos.ap-nanjing.myqcloud.com/cn-api4/pluginmaster.json";
+        private const string DalamudPluginsMasterUrl = "https://dalamudplugins-1253720819.cos.ap-nanjing.myqcloud.com/cn-api5/pluginmaster.json";
 
         private static readonly ModuleLog Log = new("PLUGINR");
 
