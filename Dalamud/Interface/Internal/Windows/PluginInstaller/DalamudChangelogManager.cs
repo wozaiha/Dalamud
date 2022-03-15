@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -11,7 +11,7 @@ namespace Dalamud.Interface.Internal.Windows.PluginInstaller
     /// </summary>
     internal class DalamudChangelogManager : IDisposable
     {
-        private const string ChangelogUrl = "https://kamori.goats.dev/Plugin/CoreChangelog";
+        private const string ChangelogUrl = "https://dalamudassets-1253720819.cos.ap-nanjing.myqcloud.com/Changelog/Changelog.json";
 
         private readonly HttpClient client = new();
 

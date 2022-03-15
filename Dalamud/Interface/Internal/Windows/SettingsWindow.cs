@@ -481,7 +481,7 @@ namespace Dalamud.Interface.Internal.Windows
 
             ImGui.Text(Loc.Localize("DalamudSettingServerInfoBarDirection", "Server Info Bar direction"));
             ImGui.TextColored(ImGuiColors.DalamudGrey, Loc.Localize("DalamudSettingServerInfoBarDirectionHint", "If checked, the Server Info Bar elements will expand to the right instead of the left."));
-            ImGui.Checkbox("Swap Direction", ref this.dtrSwapDirection);
+            ImGui.Checkbox(Loc.Localize("DalamudSettingServerInfoSwapDirection", "Swap Direction"), ref this.dtrSwapDirection);
         }
 
         private void DrawExperimentalTab()
