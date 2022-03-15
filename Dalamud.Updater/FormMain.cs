@@ -146,38 +146,43 @@ namespace Dalamud.Updater
             var thread = new Thread(() => {
                 while (this.isThreadRunning)
                 {
-                    var newPidList = Process.GetProcessesByName("ffxiv_dx11").Where(process =>
+                    try
                     {
-                        var GameDirectory = Directory.GetParent(process.MainModule.FileName).Parent.FullName;
-                        return File.Exists(Path.Combine(GameDirectory, "FFXIVBoot.exe")) || File.Exists(Path.Combine(GameDirectory, "rail_files", "rail_game_identify.json"));
-                    }).ToList()
-                                    .ConvertAll(process => process.Id.ToString()).ToArray();
-                    var newHash = String.Join(", ", newPidList).GetHashCode();
-                    var oldPidList = this.comboBoxFFXIV.Items.Cast<Object>().Select(item => item.ToString()).ToArray();
-                    var oldHash = String.Join(", ", oldPidList).GetHashCode();
-                    if (oldHash != newHash && this.comboBoxFFXIV.IsHandleCreated)
-                    {
-                        this.comboBoxFFXIV.Invoke((MethodInvoker)delegate {
-                            // Running on the UI thread
-                            comboBoxFFXIV.Items.Clear();
-                            comboBoxFFXIV.Items.AddRange(newPidList);
-                            if (newPidList.Length > 0)
-                            {
-                                if (!comboBoxFFXIV.DroppedDown)
-                                    this.comboBoxFFXIV.SelectedIndex = 0;
-                                if (this.checkBoxAutoInject.Checked)
+                        var newPidList = Process.GetProcessesByName("ffxiv_dx11").Where(process =>
+                        {
+                            var GameDirectory = Directory.GetParent(process.MainModule.FileName).Parent.FullName;
+                            return File.Exists(Path.Combine(GameDirectory, "FFXIVBoot.exe")) || File.Exists(Path.Combine(GameDirectory, "rail_files", "rail_game_identify.json"));
+                        }).ToList().ConvertAll(process => process.Id.ToString()).ToArray();
+                        var newHash = String.Join(", ", newPidList).GetHashCode();
+                        var oldPidList = this.comboBoxFFXIV.Items.Cast<Object>().Select(item => item.ToString()).ToArray();
+                        var oldHash = String.Join(", ", oldPidList).GetHashCode();
+                        if (oldHash != newHash && this.comboBoxFFXIV.IsHandleCreated)
+                        {
+                            this.comboBoxFFXIV.Invoke((MethodInvoker)delegate {
+                                // Running on the UI thread
+                                comboBoxFFXIV.Items.Clear();
+                                comboBoxFFXIV.Items.AddRange(newPidList);
+                                if (newPidList.Length > 0)
                                 {
-                                    foreach (var pidStr in newPidList)
+                                    if (!comboBoxFFXIV.DroppedDown)
+                                        this.comboBoxFFXIV.SelectedIndex = 0;
+                                    if (this.checkBoxAutoInject.Checked)
                                     {
-                                        var pid = int.Parse(pidStr);
-                                        if (this.Inject(pid))
+                                        foreach (var pidStr in newPidList)
                                         {
-                                            this.DalamudUpdaterIcon.ShowBalloonTip(2000, "帮你注入了", $"帮你注入了进程{pid}，不用谢。", ToolTipIcon.Info);
+                                            var pid = int.Parse(pidStr);
+                                            if (this.Inject(pid))
+                                            {
+                                                this.DalamudUpdaterIcon.ShowBalloonTip(2000, "帮你注入了", $"帮你注入了进程{pid}，不用谢。", ToolTipIcon.Info);
+                                            }
                                         }
                                     }
                                 }
-                            }
-                        });
+                            });
+                        }
+                    } catch
+                    {
+
                     }
                     Thread.Sleep(1000);
                 }
