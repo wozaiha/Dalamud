@@ -704,7 +704,7 @@ namespace Dalamud.Interface.Internal
                         var rangeHandle = GCHandle.Alloc(flattenedRanges.ToArray(), GCHandleType.Pinned);
                         garbageList.Add(rangeHandle);
 
-                        var sizedFont = ioFonts.AddFontFromFileTTF(fontPathJp, fontSize * fontScale, fontConfig, rangeHandle.AddrOfPinnedObject());
+                        var sizedFont = ioFonts.AddFontFromFileTTF(fontPathSc, fontSize * fontScale, fontConfig, rangeHandle.AddrOfPinnedObject());
                         fontsToUnscale.Add(sizedFont);
 
                         foreach (var request in requests)

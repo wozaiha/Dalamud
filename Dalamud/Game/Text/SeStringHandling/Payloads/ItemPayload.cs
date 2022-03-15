@@ -68,50 +68,8 @@ namespace Dalamud.Game.Text.SeStringHandling.Payloads
         /// Initializes a new instance of the <see cref="ItemPayload"/> class.
         /// Creates a payload representing an interactable item link for the specified item.
         /// </summary>
-        /// <param name="itemId">The id of the item.</param>
-        /// <param name="kind">Kind of item to encode.</param>
-        /// <param name="displayNameOverride">An optional name to include in the item link.  Typically this should
-        /// be left as null, or set to the normal item name.  Actual overrides are better done with the subsequent
-        /// TextPayload that is a part of a full item link in chat.</param>
-        public ItemPayload(uint itemId, ItemKind kind = ItemKind.Normal, string? displayNameOverride = null)
-        {
-            this.itemId = itemId;
-            this.Kind = kind;
-            this.displayName = displayNameOverride;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ItemPayload"/> class.
-        /// Creates a payload representing an interactable item link for the specified item.
-        /// </summary>
         internal ItemPayload()
         {
-        }
-
-        /// <summary>
-        /// Kinds of items that can be fetched from this payload.
-        /// </summary>
-        public enum ItemKind : uint
-        {
-            /// <summary>
-            /// Normal items.
-            /// </summary>
-            Normal,
-
-            /// <summary>
-            /// Collectible Items.
-            /// </summary>
-            Collectible = 500_000,
-
-            /// <summary>
-            /// High-Quality items.
-            /// </summary>
-            Hq = 1_000_000,
-
-            /// <summary>
-            /// Event/Key items.
-            /// </summary>
-            EventItem = 2_000_000,
         }
 
         /// <summary>
