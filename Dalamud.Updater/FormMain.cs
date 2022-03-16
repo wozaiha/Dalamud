@@ -37,6 +37,7 @@ namespace Dalamud.Updater
         private DirectoryInfo runtimePath;
         private DirectoryInfo[] runtimePaths;
         private string RuntimeVersion = "5.0.6";
+        private double injectDelaySeconds = 0;
 
         public static string GetAppSettings(string key, string def = null)
         {
@@ -130,6 +131,11 @@ namespace Dalamud.Updater
             {
                 this.checkBoxAcce.Checked = true;
             }
+            var tempInjectDelaySeconds = GetAppSettings("InjectDelaySeconds", "0");
+            if (tempInjectDelaySeconds != "0")
+            {
+                this.injectDelaySeconds = double.Parse(tempInjectDelaySeconds);
+            }
         }
 
         private void InitializeDeleteShit()
@@ -170,6 +176,7 @@ namespace Dalamud.Updater
                                     {
                                         foreach (var pidStr in newPidList)
                                         {
+                                            Thread.Sleep((int)(this.injectDelaySeconds * 1000));
                                             var pid = int.Parse(pidStr);
                                             if (this.Inject(pid))
                                             {
@@ -305,7 +312,7 @@ namespace Dalamud.Updater
                             MessageBox.Show(
                                 $@"卫月框架 {args.CurrentVersion} 版本可用。当前版本为 {
                                         args.InstalledVersion
-                                    }。这是一个强制更新，请点击 OK 来更新卫月框架。",
+                                    }。这是一个强制更新，请点击确认来更新卫月框架。",
                                 @"更新可用",
                                 MessageBoxButtons.OK,
                                 MessageBoxIcon.Information);
@@ -561,16 +568,21 @@ namespace Dalamud.Updater
         {
             if (this.comboBoxFFXIV.SelectedItem != null)
             {
-                var choice = MessageBox.Show("经检测存在 ffxiv_dx11.exe 进程，更新卫月需要关闭游戏，需要帮您代劳吗？", "关闭游戏",
-                                MessageBoxButtons.YesNo,
-                                MessageBoxIcon.Information);
-                if (choice == DialogResult.Yes)
+                var pid = int.Parse((string)this.comboBoxFFXIV.SelectedItem);
+                var process = Process.GetProcessById(pid);
+                if (isInjected(process))
                 {
-                    var pid = int.Parse((string)this.comboBoxFFXIV.SelectedItem);
-                    Process.GetProcessById(pid).Kill();
-                } else
-                {
-                    return;
+                    var choice = MessageBox.Show("经检测存在 ffxiv_dx11.exe 进程，更新卫月需要关闭游戏，需要帮您代劳吗？", "关闭游戏",
+                                    MessageBoxButtons.YesNo,
+                                    MessageBoxIcon.Information);
+                    if (choice == DialogResult.Yes)
+                    {
+                        process.Kill();
+                    }
+                    else
+                    {
+                        return;
+                    }
                 }
             }
             AutoUpdater.Mandatory = true;
@@ -620,19 +632,22 @@ namespace Dalamud.Updater
             return startInfo.ToString();
         }
 
-        private bool Inject(int pid)
+        private bool isInjected(Process process)
         {
-            var process = Process.GetProcessById(pid);
-            bool injected = false;
             for (var j = 0; j < process.Modules.Count; j++)
             {
                 if (process.Modules[j].ModuleName == "Dalamud.dll")
                 {
-                    injected = true;
-                    break;
+                    return true;
                 }
             }
-            if (injected)
+            return false;
+        }
+
+        private bool Inject(int pid)
+        {
+            var process = Process.GetProcessById(pid);
+            if(isInjected(process))
             {
                 return false;
             }
