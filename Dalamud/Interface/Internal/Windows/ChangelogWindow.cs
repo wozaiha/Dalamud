@@ -8,7 +8,6 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
 using ImGuiNET;
 using ImGuiScene;
-using Serilog;
 
 namespace Dalamud.Interface.Internal.Windows
 {
@@ -23,28 +22,28 @@ namespace Dalamud.Interface.Internal.Windows
         public const string WarrantsChangelogForMajorMinor = "6.3.";
 
         private const string ChangeLog =
-            @"• 在标题屏幕中添加了一个新菜单，允许您在登录前访问插件安装程序和各种其他插件。
-    => 您可以在“外观”下的设置中禁用此菜单。
-• 为插件添加了一种将信息添加到游戏服务器信息栏的方法（例如当前歌曲、ping 等）。
-    => 如果有任何插件提供此功能，您可以在设置中禁用并重新排序这些信息。
-• 将插件下载服务器切换到自托管解决方案而不是 GitHub，以规避 API 限制、国家/地区限制和不良 ISP 路由，同时添加了代理设置。
-    => 请参阅 卫月框架 常见问题解答 (ottercorp.github.io/faq) 的“插件是否可以安全使用”部分，或者如果您对安全性有疑虑或想了解有关如何设置和运行的详细信息，请联系 Discord 或 QQ。
-    => 游戏中的变更日志/插件安装程序现在也应该更常见，因为新服务从开发人员拉取请求描述中获取变更日志。
-• 插件安装程序中的“可用插件”列表现在还显示已安装的插件，以减少拆分的混乱。 添加了过滤已安装插件的新过滤模式。
-• 插件安装程序中添加了“更改日志”类别，该类别将列出您的插件的所有最新更改，以及 Dalamud 的最新更改。
+            @"• Added a new menu to the title screen which allows you to access the plugin installer and various other plugins before logging in.
+    => You can disable this menu in the settings under ""Look & Feel"".
+• Added a way for plugins to add information to the game's server info bar (e.g. current song, ping, etc).
+    => You can disable and reorder this information in the settings, if any plugin provides it.
+• Switched the plugin download server to a self-hosted solution instead of GitHub, to circumvent API limits, country blocks and bad ISP routing.
+    => Please see the ""Are plugins safe to use"" part of the XIVLauncher FAQ(goatcorp.github.io/faq) or reach out on Discord if you have concerns about security or want details on how this is set up and ran.
+    => Changelogs in-game/the plugin installer should now also be more common, as the new service takes changelogs from the developer pull request descriptions.
+• The ""Available Plugins"" list in the plugin installer now also shows installed plugins to make the split less confusing. A new filter mode that filters installed plugins has been added.
+• A ""Changelog"" category has been added in the plugin installer which will list all recent changes to your plugins, and recent changes to Dalamud.
 
-如果您发现任何问题或需要帮助，请务必在我们的 Discord 服务器与 QQ群 内提问。
-谢谢，玩得开心！";
+If you note any issues or need help, please make sure to ask on our discord server.
+Thanks and have fun!";
 
         private const string UpdatePluginsInfo =
-            @"• 由于此更新，您的所有插件都被自动禁用。 这个是正常的。
-• 打开插件安装程序，然后单击“更新插件”。 更新的插件应该更新然后重新启用自己。
-   => 请记住，并非所有插件都已针对新版本进行了更新。
-   => 如果某些插件在“已安装插件”选项卡中显示为红色叉号，则它们可能尚不可用。
+            @"• All of your plugins were disabled automatically, due to this update. This is normal.
+• Open the plugin installer, then click 'update plugins'. Updated plugins should update and then re-enable themselves.
+   => Please keep in mind that not all of your plugins may already be updated for the new version.
+   => If some plugins are displayed with a red cross in the 'Installed Plugins' tab, they may not yet be available.
 
-虽然我们用一小部分人对已发布的插件进行了相当大的测试，并相信它们是稳定的，但我们不能向您保证您不会遇到崩溃。
+While we tested the released plugins considerably with a smaller set of people and believe that they are stable, we cannot guarantee to you that you will not run into crashes.
 
-考虑到当前的排队时间，我们现在建议您只使用一组对您来说最重要的插件，这样您就可以继续玩游戏而不是无休止地排队。";
+Considering current queue times, this is why we recommend that for now, you only use a set of plugins that are most essential to you, so you can go on playing the game instead of waiting endlessly.";
 
         private readonly string assemblyVersion = Util.AssemblyVersion;
 
@@ -54,7 +53,7 @@ namespace Dalamud.Interface.Internal.Windows
         /// Initializes a new instance of the <see cref="ChangelogWindow"/> class.
         /// </summary>
         public ChangelogWindow()
-            : base("有啥新功能？？", ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoResize)
+            : base("What's new in XIVLauncher?", ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoResize)
         {
             this.Namespace = "DalamudChangelogWindow";
 
@@ -71,11 +70,11 @@ namespace Dalamud.Interface.Internal.Windows
         /// <inheritdoc/>
         public override void Draw()
         {
-            ImGui.Text($"卫月框架更新到了版本 D{this.assemblyVersion}。");
+            ImGui.Text($"Dalamud has been updated to version D{this.assemblyVersion}.");
 
             ImGuiHelpers.ScaledDummy(10);
 
-            ImGui.Text("包含了以下更新:");
+            ImGui.Text("The following changes were introduced:");
 
             ImGui.SameLine();
             ImGuiHelpers.ScaledDummy(0);
@@ -115,18 +114,7 @@ namespace Dalamud.Interface.Internal.Windows
 
             if (ImGui.Button(FontAwesomeIcon.LaughBeam.ToIconString()))
             {
-                try
-                {
-                    Process.Start(new ProcessStartInfo()
-                    {
-                        FileName = "https://discord.gg/3NMcUV5",
-                        UseShellExecute = true,
-                    });
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Could not open discord url");
-                }
+                Util.OpenLink("https://discord.gg/3NMcUV5");
             }
 
             if (ImGui.IsItemHovered())
@@ -150,7 +138,7 @@ namespace Dalamud.Interface.Internal.Windows
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Could not open QQ url");
+                    //Log.Error(ex, "Could not open QQ url");
                 }
             }
 
@@ -171,7 +159,7 @@ namespace Dalamud.Interface.Internal.Windows
             if (ImGui.IsItemHovered())
             {
                 ImGui.PopFont();
-                ImGui.SetTooltip("查看 FAQ");
+                ImGui.SetTooltip("See the FAQ");
                 ImGui.PushFont(UiBuilder.IconFont);
             }
 
@@ -179,13 +167,13 @@ namespace Dalamud.Interface.Internal.Windows
 
             if (ImGui.Button(FontAwesomeIcon.Heart.ToIconString()))
             {
-                Util.OpenLink("https://ottercorp.github.io/faq/support");
+                Util.OpenLink("https://goatcorp.github.io/faq/support");
             }
 
             if (ImGui.IsItemHovered())
             {
                 ImGui.PopFont();
-                ImGui.SetTooltip("支持我们");
+                ImGui.SetTooltip("Support what we care about");
                 ImGui.PushFont(UiBuilder.IconFont);
             }
 

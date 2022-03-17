@@ -78,7 +78,7 @@ namespace Dalamud.Updater
         }
         private Version getVersion()
         {
-            var rgx = new Regex(@"^\d+\.\d+\.\d+\.\d+$");
+            var rgx = new Regex(@"\d+\.\d+\.\d+\.\d+");
             var di = new DirectoryInfo(Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName);
             var dirs = di.GetDirectories("*", SearchOption.TopDirectoryOnly).Where(dir => rgx.IsMatch(dir.Name)).ToArray();
 
@@ -146,11 +146,7 @@ namespace Dalamud.Updater
             var thread = new Thread(() => {
                 while (this.isThreadRunning)
                 {
-                    var newPidList = Process.GetProcessesByName("ffxiv_dx11").Where(process =>
-                    {
-                        var GameDirectory = Directory.GetParent(process.MainModule.FileName).Parent.FullName;
-                        return File.Exists(Path.Combine(GameDirectory, "FFXIVBoot.exe")) || File.Exists(Path.Combine(GameDirectory, "rail_files", "rail_game_identify.json"));
-                    }).ToList()
+                    var newPidList = Process.GetProcessesByName("ffxiv_dx11").ToList()
                                     .ConvertAll(process => process.Id.ToString()).ToArray();
                     var newHash = String.Join(", ", newPidList).GetHashCode();
                     var oldPidList = this.comboBoxFFXIV.Items.Cast<Object>().Select(item => item.ToString()).ToArray();

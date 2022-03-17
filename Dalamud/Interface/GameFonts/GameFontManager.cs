@@ -117,21 +117,18 @@ namespace Dalamud.Interface.GameFonts
         /// <param name="target">Target font.</param>
         /// <param name="missingOnly">Whether to copy missing glyphs only.</param>
         /// <param name="rebuildLookupTable">Whether to call target.BuildLookupTable().</param>
-        /// <param name="rangeLow">Low codepoint range to copy.</param>
-        /// <param name="rangeHigh">High codepoing range to copy.</param>
-        public static void CopyGlyphsAcrossFonts(ImFontPtr? source, ImFontPtr? target, bool missingOnly, bool rebuildLookupTable, int rangeLow = 32, int rangeHigh = 0xFFFE)
+        public static void CopyGlyphsAcrossFonts(ImFontPtr? source, ImFontPtr? target, bool missingOnly, bool rebuildLookupTable)
         {
             if (!source.HasValue || !target.HasValue)
                 return;
 
-            var scale = target.Value!.FontSize / source.Value!.FontSize;
             unsafe
             {
                 var glyphs = (ImFontGlyphReal*)source.Value!.Glyphs.Data;
                 for (int j = 0, j_ = source.Value!.Glyphs.Size; j < j_; j++)
                 {
                     var glyph = &glyphs[j];
-                    if (glyph->Codepoint < rangeLow || glyph->Codepoint > rangeHigh)
+                    if (glyph->Codepoint < 32 || glyph->Codepoint >= 0xFFFF)
                         continue;
 
                     var prevGlyphPtr = (ImFontGlyphReal*)target.Value!.FindGlyphNoFallback((ushort)glyph->Codepoint).NativePtr;
@@ -140,66 +137,33 @@ namespace Dalamud.Interface.GameFonts
                         target.Value!.AddGlyph(
                             target.Value!.ConfigData,
                             (ushort)glyph->Codepoint,
-                            glyph->X0 * scale,
-                            glyph->Y0 * scale,
-                            glyph->X1 * scale,
-                            glyph->Y1 * scale,
+                            glyph->X0,
+                            glyph->Y0,
+                            glyph->X0 + ((glyph->X1 - glyph->X0) * target.Value!.FontSize / source.Value!.FontSize),
+                            glyph->Y0 + ((glyph->Y1 - glyph->Y0) * target.Value!.FontSize / source.Value!.FontSize),
                             glyph->U0,
                             glyph->V0,
                             glyph->U1,
                             glyph->V1,
-                            glyph->AdvanceX * scale);
+                            glyph->AdvanceX * target.Value!.FontSize / source.Value!.FontSize);
                     }
                     else if (!missingOnly)
                     {
-                        prevGlyphPtr->X0 = glyph->X0 * scale;
-                        prevGlyphPtr->Y0 = glyph->Y0 * scale;
-                        prevGlyphPtr->X1 = glyph->X1 * scale;
-                        prevGlyphPtr->Y1 = glyph->Y1 * scale;
+                        prevGlyphPtr->X0 = glyph->X0;
+                        prevGlyphPtr->Y0 = glyph->Y0;
+                        prevGlyphPtr->X1 = glyph->X0 + ((glyph->X1 - glyph->X0) * target.Value!.FontSize / source.Value!.FontSize);
+                        prevGlyphPtr->Y1 = glyph->Y0 + ((glyph->Y1 - glyph->Y0) * target.Value!.FontSize / source.Value!.FontSize);
                         prevGlyphPtr->U0 = glyph->U0;
                         prevGlyphPtr->V0 = glyph->V0;
                         prevGlyphPtr->U1 = glyph->U1;
                         prevGlyphPtr->V1 = glyph->V1;
-                        prevGlyphPtr->AdvanceX = glyph->AdvanceX * scale;
+                        prevGlyphPtr->AdvanceX = glyph->AdvanceX * target.Value!.FontSize / source.Value!.FontSize;
                     }
                 }
             }
 
             if (rebuildLookupTable)
                 target.Value!.BuildLookupTable();
-        }
-
-        /// <summary>
-        /// Unscales fonts after they have been rendered onto atlas.
-        /// </summary>
-        /// <param name="fontPtr">Font to unscale.</param>
-        /// <param name="fontScale">Scale factor.</param>
-        /// <param name="rebuildLookupTable">Whether to call target.BuildLookupTable().</param>
-        public static void UnscaleFont(ImFontPtr fontPtr, float fontScale, bool rebuildLookupTable = true)
-        {
-            unsafe
-            {
-                var font = fontPtr.NativePtr;
-                for (int i = 0, i_ = font->IndexAdvanceX.Size; i < i_; ++i)
-                    ((float*)font->IndexAdvanceX.Data)[i] /= fontScale;
-                font->FallbackAdvanceX /= fontScale;
-                font->FontSize /= fontScale;
-                font->Ascent /= fontScale;
-                font->Descent /= fontScale;
-                var glyphs = (ImFontGlyphReal*)font->Glyphs.Data;
-                for (int i = 0, i_ = font->Glyphs.Size; i < i_; i++)
-                {
-                    var glyph = &glyphs[i];
-                    glyph->X0 /= fontScale;
-                    glyph->X1 /= fontScale;
-                    glyph->Y0 /= fontScale;
-                    glyph->Y1 /= fontScale;
-                    glyph->AdvanceX /= fontScale;
-                }
-            }
-
-            if (rebuildLookupTable)
-                fontPtr.BuildLookupTable();
         }
 
         /// <inheritdoc/>
@@ -284,48 +248,39 @@ namespace Dalamud.Interface.GameFonts
         /// </summary>
         public void BuildFonts()
         {
-            unsafe
+            var io = ImGui.GetIO();
+            io.Fonts.TexDesiredWidth = 4096;
+
+            this.glyphRectIds.Clear();
+            this.fonts.Clear();
+
+            foreach (var style in this.fontUseCounter.Keys)
             {
-                ImFontConfigPtr fontConfig = ImGuiNative.ImFontConfig_ImFontConfig();
-                fontConfig.OversampleH = 1;
-                fontConfig.OversampleV = 1;
-                fontConfig.PixelSnapH = true;
+                var rectIds = this.glyphRectIds[style] = new();
 
-                var io = ImGui.GetIO();
+                var fdt = this.fdts[(int)style.FamilyAndSize];
+                if (fdt == null)
+                    continue;
 
-                this.glyphRectIds.Clear();
-                this.fonts.Clear();
-
-                foreach (var style in this.fontUseCounter.Keys)
+                var font = io.Fonts.AddFontDefault();
+                this.fonts[style] = font;
+                foreach (var glyph in fdt.Glyphs)
                 {
-                    var rectIds = this.glyphRectIds[style] = new();
-
-                    var fdt = this.fdts[(int)style.FamilyAndSize];
-                    if (fdt == null)
+                    var c = glyph.Char;
+                    if (c < 32 || c >= 0xFFFF)
                         continue;
 
-                    var font = io.Fonts.AddFontDefault(fontConfig);
-                    this.fonts[style] = font;
-                    foreach (var glyph in fdt.Glyphs)
-                    {
-                        var c = glyph.Char;
-                        if (c < 32 || c >= 0xFFFF)
-                            continue;
-
-                        var widthAdjustment = style.CalculateWidthAdjustment(fdt, glyph);
-                        rectIds[c] = Tuple.Create(
-                            io.Fonts.AddCustomRectFontGlyph(
-                                font,
-                                c,
-                                glyph.BoundingWidth + widthAdjustment + 1,
-                                glyph.BoundingHeight + 1,
-                                glyph.AdvanceWidth,
-                                new Vector2(0, glyph.CurrentOffsetY)),
-                            glyph);
-                    }
+                    var widthAdjustment = style.CalculateWidthAdjustment(fdt, glyph);
+                    rectIds[c] = Tuple.Create(
+                        io.Fonts.AddCustomRectFontGlyph(
+                            font,
+                            c,
+                            glyph.BoundingWidth + widthAdjustment + 1,
+                            glyph.BoundingHeight + 1,
+                            glyph.AdvanceWidth,
+                            new Vector2(0, glyph.CurrentOffsetY)),
+                        glyph);
                 }
-
-                fontConfig.Destroy();
             }
         }
 
