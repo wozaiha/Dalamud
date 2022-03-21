@@ -1,5 +1,5 @@
 using System.Numerics;
-
+using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Gui.Internal;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Windowing;
@@ -29,6 +29,7 @@ namespace Dalamud.Interface.Internal.Windows
         /// <inheritdoc/>
         public override void Draw()
         {
+            if (this.IsOpen && Service<KeyState>.Get()[VirtualKey.SHIFT]) Service<DalamudInterface>.Get().CloseIMEWindow();
             var ime = Service<DalamudIME>.GetNullable();
 
             if (ime == null || !ime.IsEnabled)
