@@ -801,27 +801,38 @@ namespace Dalamud.Interface.Internal.Windows
                 var url = thirdRepoSetting.Url;
                 if (ImGui.InputText($"##thirdRepoInput", ref url, 65535, ImGuiInputTextFlags.EnterReturnsTrue))
                 {
-                    var contains = this.thirdRepoList.Select(repo => repo.Url).Contains(url);
                     if (thirdRepoSetting.Url == url)
                     {
                         // no change.
                     }
-                    else if (contains && thirdRepoSetting.Url != url)
-                    {
-                        this.thirdRepoAddError = Loc.Localize("DalamudThirdRepoExists", "Repo already exists.");
-                        Task.Delay(5000).ContinueWith(t => this.thirdRepoAddError = string.Empty);
-                    }
                     else
                     {
-                        thirdRepoSetting.Url = url;
-                        this.thirdRepoListChanged = url != thirdRepoSetting.Url;
+                        if (this.thirdRepoList.Select(repo => repo.Url).Contains(url))
+                        {
+                            this.thirdRepoAddError = Loc.Localize("DalamudThirdRepoExists", "Repo already exists.");
+                            Task.Delay(5000).ContinueWith(t => this.thirdRepoAddError = string.Empty);
+                        }
+                        else
+                        {
+                            thirdRepoSetting.Url = url;
+                            this.thirdRepoListChanged = true;
+                        }
                     }
                 }
 
                 ImGui.NextColumn();
 
                 ImGui.SetCursorPosX(ImGui.GetCursorPosX() + (ImGui.GetColumnWidth() / 2) - 7 - (12 * ImGuiHelpers.GlobalScale));
-                ImGui.Checkbox("##thirdRepoCheck", ref isEnabled);
+                if (ImGui.Checkbox("##thirdRepoCheck", ref isEnabled))
+                {
+                    if (thirdRepoSetting.IsEnabled != isEnabled)
+                    {
+                        this.thirdRepoListChanged = true;
+                    }
+
+                    thirdRepoSetting.IsEnabled = isEnabled;
+                }
+
                 ImGui.NextColumn();
 
                 if (ImGuiComponents.IconButton(FontAwesomeIcon.Trash))
@@ -833,8 +844,6 @@ namespace Dalamud.Interface.Internal.Windows
 
                 ImGui.NextColumn();
                 ImGui.Separator();
-
-                thirdRepoSetting.IsEnabled = isEnabled;
 
                 repoNumber++;
             }
