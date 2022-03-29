@@ -20,6 +20,7 @@ using System.IO.Compression;
 using System.Configuration;
 using Newtonsoft.Json.Linq;
 using System.Security.Principal;
+using System.Xml;
 
 namespace Dalamud.Updater
 {
@@ -102,6 +103,7 @@ namespace Dalamud.Updater
             InitializePIDCheck();
             InitializeDeleteShit();
             InitializeConfig();
+            labelVersion.Text = string.Format("卫月版本 : {0}", getVersion());
             string[] strArgs = Environment.GetCommandLineArgs();
             if (strArgs.Length >= 2 && strArgs[1].Equals("-startup"))
             {
@@ -113,7 +115,26 @@ namespace Dalamud.Updater
                     this.DalamudUpdaterIcon.ShowBalloonTip(2000, "自启动成功", "放心，我会在后台偷偷干活的。", ToolTipIcon.Info);
                 }
             }
-            labelVersion.Text = string.Format("卫月版本 : {0}", getVersion());
+            try
+            {
+                var localVersion = getVersion();
+                var remoteUrl = getUpdateUrl();
+                XmlDocument remoteXml = new XmlDocument();
+                remoteXml.Load(remoteUrl);
+                foreach (XmlNode child in remoteXml.SelectNodes("/item/version"))
+                {
+                    if (child.InnerText != localVersion.ToString())
+                    {
+                        AutoUpdater.Start(remoteUrl);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "程序启动版本检查失败",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
         }
 
         #region Initialize
@@ -156,8 +177,7 @@ namespace Dalamud.Updater
                     {
                         var newPidList = Process.GetProcessesByName("ffxiv_dx11").Where(process =>
                         {
-                            var GameDirectory = Directory.GetParent(process.MainModule.FileName).Parent.FullName;
-                            return File.Exists(Path.Combine(GameDirectory, "FFXIVBoot.exe")) || File.Exists(Path.Combine(GameDirectory, "rail_files", "rail_game_identify.json"));
+                            return !process.MainWindowTitle.Contains("FINAL FANTASY XIV");
                         }).ToList().ConvertAll(process => process.Id.ToString()).ToArray();
                         var newHash = String.Join(", ", newPidList).GetHashCode();
                         var oldPidList = this.comboBoxFFXIV.Items.Cast<Object>().Select(item => item.ToString()).ToArray();
@@ -299,7 +319,7 @@ namespace Dalamud.Updater
             };
         }
 
-        private void AutoUpdaterOnCheckForUpdateEvent(UpdateInfoEventArgs args)
+        private void OnCheckForUpdateEvent(UpdateInfoEventArgs args)
         {
             if (args.Error == null)
             {
@@ -352,7 +372,7 @@ namespace Dalamud.Updater
                 else
                 {
                     MessageBox.Show(@"没有可用更新，请稍后查看。", @"更新不可用",
-                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                   MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
             else
@@ -370,6 +390,11 @@ namespace Dalamud.Updater
                         MessageBoxIcon.Error);
                 }
             }
+        }
+
+        private void AutoUpdaterOnCheckForUpdateEvent(UpdateInfoEventArgs args)
+        {
+            OnCheckForUpdateEvent(args);
         }
         public class ProgressEventArgsEx
         {
@@ -564,6 +589,19 @@ namespace Dalamud.Updater
             }
         }
 
+        private string getUpdateUrl()
+        {
+            var _updateUrl = updateUrl;
+            /*
+            var OverwriteUpdate = GetAppSettings("OverwriteUpdate");
+            if (OverwriteUpdate != null)
+                _updateUrl = OverwriteUpdate;
+            */
+            if (this.checkBoxAcce.Checked)
+                _updateUrl = updateUrl.Replace("/update", "/acce_update").Replace("ap-nanjing", "accelerate");
+            return _updateUrl;
+        }
+
         private void ButtonCheckForUpdate_Click(object sender, EventArgs e)
         {
             if (this.comboBoxFFXIV.SelectedItem != null)
@@ -587,12 +625,7 @@ namespace Dalamud.Updater
             }
             AutoUpdater.Mandatory = true;
             AutoUpdater.InstalledVersion = getVersion();
-            var OverwriteUpdate = GetAppSettings("OverwriteUpdate");
-            if (OverwriteUpdate != null)
-                updateUrl = OverwriteUpdate;
-            if (this.checkBoxAcce.Checked)
-                updateUrl = updateUrl.Replace("/update", "/acce_update").Replace("ap-nanjing", "accelerate");
-            AutoUpdater.Start(updateUrl);
+            AutoUpdater.Start(getUpdateUrl());
         }
 
         private void comboBoxFFXIV_Clicked(object sender, EventArgs e)
@@ -634,12 +667,17 @@ namespace Dalamud.Updater
 
         private bool isInjected(Process process)
         {
-            for (var j = 0; j < process.Modules.Count; j++)
+            try
             {
-                if (process.Modules[j].ModuleName == "Dalamud.dll")
+                for (var j = 0; j < process.Modules.Count; j++)
                 {
-                    return true;
+                    if (process.Modules[j].ModuleName == "Dalamud.dll")
+                    {
+                        return true;
+                    }
                 }
+            } catch {
+            
             }
             return false;
         }
@@ -663,10 +701,20 @@ namespace Dalamud.Updater
 
         private void ButtonInject_Click(object sender, EventArgs e)
         {
-            if(this.comboBoxFFXIV.SelectedItem != null)
+            if(this.comboBoxFFXIV.SelectedItem != null
+                && this.comboBoxFFXIV.SelectedItem.ToString().Length > 0)
             {
-                var pid = this.comboBoxFFXIV.SelectedItem.ToString();
-                Inject(int.Parse(pid));
+                var pidStr = this.comboBoxFFXIV.SelectedItem.ToString();
+                if(int.TryParse(pidStr, out var pid))
+                {
+                    Inject(pid);
+                }
+                else
+                {
+                    MessageBox.Show("未能解析游戏进程ID", "找不到游戏",
+                                    MessageBoxButtons.OK,
+                                    MessageBoxIcon.Error);
+                }
             }
             else
             {
