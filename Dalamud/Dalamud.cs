@@ -301,6 +301,7 @@ namespace Dalamud
 
                 try
                 {
+                    Log.Information("Loading fools22");
                     this.fools22 = new Fools22();
                 }
                 catch (Exception ex)
