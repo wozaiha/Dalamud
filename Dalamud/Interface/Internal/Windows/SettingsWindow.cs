@@ -193,7 +193,7 @@ namespace Dalamud.Interface.Internal.Windows
             this.dtrOrder = configuration.DtrOrder;
             this.dtrIgnore = configuration.DtrIgnore;
 
-            this.doFools22 = configuration.Fools22Newer ?? true;
+            this.doFools22 = configuration.Fools22Newer;
         }
 
         /// <inheritdoc/>
