@@ -53,6 +53,8 @@ namespace Dalamud
 
         #endregion
 
+        private Fools22? fools22;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Dalamud"/> class.
         /// </summary>
@@ -297,6 +299,15 @@ namespace Dalamud
 
                 Troubleshooting.LogTroubleshooting();
 
+                try
+                {
+                    this.fools22 = new Fools22();
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Fools22 load failed.");
+                }
+
                 Log.Information("Dalamud is ready.");
             }
             catch (Exception ex)
@@ -386,6 +397,8 @@ namespace Dalamud
                 SerilogEventSink.Instance.LogLine -= SerilogOnLogLine;
 
                 this.processMonoHook?.Dispose();
+
+                this.fools22?.Dispose();
 
                 Log.Debug("Dalamud::Dispose() OK!");
             }
