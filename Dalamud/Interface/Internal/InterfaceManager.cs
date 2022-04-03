@@ -662,16 +662,217 @@ namespace Dalamud.Interface.Internal
                     fontsToOverwriteFromAxis.Add(false);
                     fontsToReassignSizes.Add(null);
                 }
-            {
-            var fontPathSc = Path.Combine(dalamud.AssetDirectory.FullName, "UIRes", "NotoSansCJKsc-Medium.otf");
-            if (!File.Exists(fontPathSc))
-                ShowFontError(fontPathSc);
+            // {
+            // var fontPathSc = Path.Combine(dalamud.AssetDirectory.FullName, "UIRes", "NotoSansCJKsc-Medium.otf");
+            // if (!File.Exists(fontPathSc))
+            //     ShowFontError(fontPathSc);
 
-            var chineseRangeHandle = GCHandle.Alloc(GlyphRangesChinese.GlyphRanges, GCHandleType.Pinned);
-            DefaultFont = ioFonts.AddFontFromFileTTF(fontPathSc, (DefaultFontSizePx + 1) * fontScale, fontConfig, chineseRangeHandle.AddrOfPinnedObject());
-            chineseRangeHandle.Free();
-            fontsToUnscale.Add(DefaultFont);   
-            }
+            // var chineseRangeHandle = GCHandle.Alloc(GlyphRangesChinese.GlyphRanges, GCHandleType.Pinned);
+            // DefaultFont = ioFonts.AddFontFromFileTTF(fontPathSc, (DefaultFontSizePx + 1) * fontScale, fontConfig, chineseRangeHandle.AddrOfPinnedObject());
+            // chineseRangeHandle.Free();
+            // fontsToUnscale.Add(DefaultFont);   
+            // }
+            //     // FontAwesome icon font
+            //     Log.Verbose("[FONT] SetupFonts - FontAwesome icon font");
+            //     {
+            //         var fontPathIcon = Path.Combine(dalamud.AssetDirectory.FullName, "UIRes", "FontAwesome5FreeSolid.otf");
+            //         if (!File.Exists(fontPathIcon))
+            //             ShowFontError(fontPathIcon);
+
+            //         var iconRangeHandle = GCHandle.Alloc(new ushort[] { 0xE000, 0xF8FF, 0, }, GCHandleType.Pinned);
+            //         garbageList.Add(iconRangeHandle);
+
+            //         fontConfig.GlyphRanges = iconRangeHandle.AddrOfPinnedObject();
+            //         IconFont = ioFonts.AddFontFromFileTTF(fontPathIcon, DefaultFontSizePx * fontLoadScale, fontConfig);
+            //         fontsToUnscale.Add(IconFont);
+            //         this.axisFontHandles.Add(null);
+            //         fontsToOverwriteFromAxis.Add(false);
+            //         fontsToReassignSizes.Add(null);
+            //     }
+
+            //     // Monospace font
+            //     Log.Verbose("[FONT] SetupFonts - Monospace font");
+            //     {
+            //         var fontPathMono = Path.Combine(dalamud.AssetDirectory.FullName, "UIRes", "Inconsolata-Regular.ttf");
+            //         if (!File.Exists(fontPathMono))
+            //             ShowFontError(fontPathMono);
+
+            //         fontConfig.GlyphRanges = IntPtr.Zero;
+            //         MonoFont = ioFonts.AddFontFromFileTTF(fontPathMono, DefaultFontSizePx * fontLoadScale, fontConfig);
+            //         fontsToUnscale.Add(MonoFont);
+            //         this.axisFontHandles.Add(null);
+            //         fontsToOverwriteFromAxis.Add(false);
+            //         fontsToReassignSizes.Add(null);
+            //     }
+
+            //     // Default font but in requested size for requested glyphs
+            //     Log.Verbose("[FONT] SetupFonts - Default font but in requested size for requested glyphs");
+            //     {
+            //         Dictionary<float, List<SpecialGlyphRequest>> extraFontRequests = new();
+            //         foreach (var extraFontRequest in this.glyphRequests)
+            //         {
+            //             if (!extraFontRequests.ContainsKey(extraFontRequest.Size))
+            //                 extraFontRequests[extraFontRequest.Size] = new();
+            //             extraFontRequests[extraFontRequest.Size].Add(extraFontRequest);
+            //         }
+
+            //         foreach (var (fontSize, requests) in extraFontRequests)
+            //         {
+            //             List<Tuple<ushort, ushort>> codepointRanges = new();
+            //             codepointRanges.Add(Tuple.Create(Fallback1Codepoint, Fallback1Codepoint));
+            //             codepointRanges.Add(Tuple.Create(Fallback2Codepoint, Fallback2Codepoint));
+
+            //             // ImGui default ellipsis characters
+            //             codepointRanges.Add(Tuple.Create<ushort, ushort>(0x2026, 0x2026));
+            //             codepointRanges.Add(Tuple.Create<ushort, ushort>(0x0085, 0x0085));
+
+            //             foreach (var request in requests)
+            //             {
+            //                 foreach (var range in request.CodepointRanges)
+            //                     codepointRanges.Add(range);
+            //             }
+
+            //             codepointRanges.Sort((x, y) => (x.Item1 == y.Item1 ? (x.Item2 < y.Item2 ? -1 : (x.Item2 == y.Item2 ? 0 : 1)) : (x.Item1 < y.Item1 ? -1 : 1)));
+
+            //             List<ushort> flattenedRanges = new();
+            //             foreach (var range in codepointRanges)
+            //             {
+            //                 if (flattenedRanges.Any() && flattenedRanges[^1] >= range.Item1 - 1)
+            //                 {
+            //                     flattenedRanges[^1] = Math.Max(flattenedRanges[^1], range.Item2);
+            //                 }
+            //                 else
+            //                 {
+            //                     flattenedRanges.Add(range.Item1);
+            //                     flattenedRanges.Add(range.Item2);
+            //                 }
+            //             }
+
+            //             flattenedRanges.Add(0);
+
+            //             ImFontPtr sizedFont;
+            //             this.axisFontHandles.Add(gameFontManager.NewFontRef(this.AllowBigFontAtlas ? new(GameFontFamily.Axis, fontSize * 3 / 4 * fontLoadScale) : new(GameFontFamilyAndSize.Axis12)));
+            //             if (this.UseAxis)
+            //             {
+            //                 fontConfig.GlyphRanges = dummyRangeHandle.AddrOfPinnedObject();
+            //                 fontConfig.SizePixels = (this.AllowBigFontAtlas ? fontSize : DefaultFontSizePx) * fontLoadScale;
+            //                 sizedFont = ioFonts.AddFontDefault(fontConfig);
+            //                 fontsToUnscale.Add(sizedFont);
+            //                 fontsToOverwriteFromAxis.Add(true);
+            //                 fontsToReassignSizes.Add(this.AllowBigFontAtlas ? null : fontSize);
+            //             }
+            //             else
+            //             {
+            //                 var rangeHandle = GCHandle.Alloc(flattenedRanges.ToArray(), GCHandleType.Pinned);
+            //                 garbageList.Add(rangeHandle);
+            //                 sizedFont = ioFonts.AddFontFromFileTTF(fontPathJp, (this.AllowBigFontAtlas ? fontSize : DefaultFontSizePx + 1) * fontLoadScale, fontConfig, rangeHandle.AddrOfPinnedObject());
+            //                 fontsToUnscale.Add(sizedFont);
+            //                 fontsToOverwriteFromAxis.Add(false);
+            //                 fontsToReassignSizes.Add(this.AllowBigFontAtlas ? null : fontSize);
+            //             }
+
+            //             foreach (var request in requests)
+            //                 request.FontInternal = sizedFont;
+            //         }
+            //     }
+
+            //     gameFontManager.BuildFonts();
+
+            //     Log.Verbose("[FONT] Invoke OnBuildFonts");
+            //     this.BuildFonts?.Invoke();
+            //     Log.Verbose("[FONT] OnBuildFonts OK!");
+
+            //     for (var i = 0; i < ImGui.GetIO().Fonts.Fonts.Size; i++)
+            //     {
+            //         Log.Verbose("{0} - {1}", i, ImGui.GetIO().Fonts.Fonts[i].GetDebugName());
+            //     }
+
+            //     ioFonts.Build();
+
+            //     if (Math.Abs(fontGamma - 1.0f) >= 0.001)
+            //     {
+            //         // Gamma correction (stbtt/FreeType would output in linear space whereas most real world usages will apply 1.4 or 1.8 gamma; Windows/XIV prebaked uses 1.4)
+            //         ioFonts.GetTexDataAsRGBA32(out byte* texPixels, out var texWidth, out var texHeight);
+            //         for (int i = 3, i_ = texWidth * texHeight * 4; i < i_; i += 4)
+            //             texPixels[i] = (byte)(Math.Pow(texPixels[i] / 255.0f, 1.0f / fontGamma) * 255.0f);
+            //     }
+
+            //     gameFontManager.AfterBuildFonts();
+
+            //     for (var i = 0; i < fontsToUnscale.Count; i++)
+            //     {
+            //         var font = fontsToUnscale[i];
+            //         var fontPtr = font.NativePtr;
+            //         var correspondingAxis = this.axisFontHandles[i];
+            //         var overwrite = fontsToOverwriteFromAxis[i];
+            //         var overwriteSize = fontsToReassignSizes[i];
+
+            //         GameFontManager.UnscaleFont(font, fontLoadScale, false);
+
+            //         if (correspondingAxis == null)
+            //             continue;
+
+            //         var scale = 1f;
+
+            //         if (overwrite)
+            //         {
+            //             var srcPtr = correspondingAxis.ImFont.NativePtr;
+            //             scale = fontPtr->ConfigData->SizePixels / srcPtr->ConfigData->SizePixels / fontLoadScale;
+            //             fontPtr->FontSize = srcPtr->FontSize * scale;
+            //             fontPtr->Ascent = srcPtr->Ascent * scale;
+            //             fontPtr->Descent = srcPtr->Descent * scale;
+            //             fontPtr->FallbackChar = srcPtr->FallbackChar;
+            //             fontPtr->EllipsisChar = srcPtr->EllipsisChar;
+            //             GameFontManager.CopyGlyphsAcrossFonts(correspondingAxis.ImFont, font, false, false);
+
+            //             scale = 1f;
+            //         }
+
+            //         if (overwriteSize != null)
+            //             scale *= overwriteSize.Value / fontPtr->ConfigData->SizePixels;
+
+            //         if (scale != 1f)
+            //             GameFontManager.UnscaleFont(font, 1 / scale, false);
+
+            //         Log.Verbose("[FONT] Font {0}: result size {1}", i, fontPtr->FontSize);
+
+            //         if (!this.UseAxis && fontPtr == DefaultFont.NativePtr)
+            //         {
+            //             fontPtr->FontSize -= 1;
+            //             GameFontManager.CopyGlyphsAcrossFonts(correspondingAxis.ImFont, font, true, false, 0xE020, 0xE0DB);
+            //             fontPtr->FontSize += 1;
+            //         }
+            //         else
+            //         {
+            //             GameFontManager.CopyGlyphsAcrossFonts(correspondingAxis.ImFont, font, true, false, 0xE020, 0xE0DB);
+            //         }
+            //     }
+
+            //     // Fill missing glyphs in MonoFont from DefaultFont
+            //     GameFontManager.CopyGlyphsAcrossFonts(DefaultFont, MonoFont, true, false);
+
+            //     foreach (var font in fontsToUnscale)
+            //     {
+            //         font.FallbackChar = Fallback1Codepoint;
+            //         font.BuildLookupTable();
+            //     }
+
+            //     Log.Verbose("[FONT] Invoke OnAfterBuildFonts");
+            //     this.AfterBuildFonts?.Invoke();
+            //     Log.Verbose("[FONT] OnAfterBuildFonts OK!");
+
+            //     Log.Verbose("[FONT] Fonts built!");
+
+            //     this.fontBuildSignal.Set();
+
+            //     this.FontsReady = true;
+            // }
+            // finally
+            // {
+            //     if (fontConfig.NativePtr != null)
+            //         fontConfig.Destroy();
+
+
                 // FontAwesome icon font
                 Log.Verbose("[FONT] SetupFonts - FontAwesome icon font");
                 {
