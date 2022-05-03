@@ -249,10 +249,11 @@ namespace Dalamud.Updater
         private void FormMain_FormClosing(object sender, FormClosingEventArgs e)
         {
             e.Cancel = true;
-            //this.WindowState = FormWindowState.Minimized;
+            this.WindowState = FormWindowState.Minimized;
+            this.Hide();
             //this.FormBorderStyle = FormBorderStyle.SizableToolWindow;
             //this.ShowInTaskbar = false;
-            this.Visible = false;
+            //this.Visible = false;
             if (firstHideHint)
             {
                 firstHideHint = false;
@@ -270,7 +271,11 @@ namespace Dalamud.Updater
                 //    this.FormBorderStyle = FormBorderStyle.FixedDialog;
                 //    this.ShowInTaskbar = true;
                 //}
-                if (!this.Visible) this.Visible = true;
+                if (this.WindowState == FormWindowState.Minimized)
+                {
+                    this.Show();
+                    this.WindowState = FormWindowState.Normal;
+                }
                 this.Activate();
             }
         }

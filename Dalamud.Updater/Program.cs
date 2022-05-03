@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -34,6 +35,10 @@ namespace Dalamud.Updater
                 Application.Exit();
                 return;
             }
+            if (ProcessMutexInstance()) {
+                Application.Exit();
+                return;
+            }
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Form form = new FormMain();
@@ -59,5 +64,39 @@ namespace Dalamud.Updater
             return principal.IsInRole(WindowsBuiltInRole.Administrator);
         }
 
+        static bool ProcessMutexInstance() {
+            Process current = Process.GetCurrentProcess();
+            //var processes = Process.GetProcessesByName(current.ProcessName).Where(x=>(x.Id != current.Id && x.MainModule.FileName == current.MainModule.FileName));
+            var processes = Process.GetProcessesByName(current.ProcessName).Where(x => (x.Id != current.Id));
+            if (processes.ToList().Count == 0)
+                return false;
+            foreach (var p in processes) { 
+                var hWnd = p.MainWindowHandle;
+                if (hWnd == IntPtr.Zero) {
+                    hWnd = FindWindow(null,"卫月更新器");
+                    GetWindowThreadProcessId(hWnd,out var pid);
+                    if (pid == p.Id) {
+                        ShowWindow(hWnd, 5);
+                        ShowWindow(hWnd, 1);
+                    }
+                } else
+                    ShowWindow(hWnd, 1);
+                SetForegroundWindow(hWnd);
+            }
+            return true;
+        }
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr FindWindow(string className, string frmText);
+        [DllImport("User32.dll")]
+        private static extern bool ShowWindowAsync(IntPtr hWnd, int cmdShow);
+        [DllImport("user32.dll", EntryPoint = "ShowWindow", CharSet = CharSet.Auto)]
+        private static extern int ShowWindow(IntPtr hwnd, int showWay);
+        [DllImport("user32.dll ", SetLastError = true)]
+        private static extern void SwitchToThisWindow(IntPtr hWnd, bool fAltTab);
+        [DllImport("User32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+        [DllImport("User32.dll", CharSet = CharSet.Auto)]
+        private static extern int GetWindowThreadProcessId(IntPtr hwnd, out int ID);
     }
 }
