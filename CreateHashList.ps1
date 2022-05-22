@@ -1,6 +1,6 @@
 $hashes = [ordered]@{}
 
-Set-Location bin\\Debug
+Set-Location $args[0]
 
 Get-ChildItem -File -Recurse -Exclude dalamud.txt,*.zip,*.pdb,*.ipdb | Foreach-Object {
 	$key = ($_.FullName | Resolve-Path -Relative).TrimStart(".\\")
